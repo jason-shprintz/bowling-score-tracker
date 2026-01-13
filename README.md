@@ -4,7 +4,7 @@ A React Native mobile application built with Expo that allows bowlers to track t
 
 ## Project Structure
 
-```
+```bash
 src/
 ├── components/     # Reusable UI components
 ├── screens/        # Screen components
@@ -26,6 +26,7 @@ src/
 
 1. Clone the repository
 2. Install dependencies:
+
    ```bash
    npm install
    ```
