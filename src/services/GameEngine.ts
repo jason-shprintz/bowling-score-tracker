@@ -59,6 +59,10 @@ export class GameEngine implements GameEngineInterface {
       throw new Error('Invalid roll index: must be non-negative');
     }
 
+    if (pins.length !== 10) {
+      throw new Error('Invalid pins array: must contain exactly 10 elements');
+    }
+
     const frame = this.currentSession.frames[frameIndex];
 
     // Count knocked pins
