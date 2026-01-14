@@ -149,6 +149,30 @@ describe('GameEngine - Core Game State Management', () => {
       }).toThrow('Invalid roll index: must be non-negative');
     });
 
+    it('should throw error when pins array has less than 10 elements', () => {
+      const pins: PinState[] = Array(5).fill('standing');
+
+      expect(() => {
+        engine.recordRoll(0, 0, pins);
+      }).toThrow('Invalid pins array: must contain exactly 10 elements');
+    });
+
+    it('should throw error when pins array has more than 10 elements', () => {
+      const pins: PinState[] = Array(15).fill('standing');
+
+      expect(() => {
+        engine.recordRoll(0, 0, pins);
+      }).toThrow('Invalid pins array: must contain exactly 10 elements');
+    });
+
+    it('should throw error when pins array is empty', () => {
+      const pins: PinState[] = [];
+
+      expect(() => {
+        engine.recordRoll(0, 0, pins);
+      }).toThrow('Invalid pins array: must contain exactly 10 elements');
+    });
+
     it('should throw error when recording rolls out of order', () => {
       const pins: PinState[] = Array(10).fill('standing');
       pins[0] = 'knocked';
