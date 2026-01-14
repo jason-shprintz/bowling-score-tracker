@@ -140,6 +140,55 @@ describe('GameEngine - Core Game State Management', () => {
         engine.recordRoll(10, 0, pins);
       }).toThrow('Invalid frame index');
     });
+
+    it('should throw error when recording rolls out of order', () => {
+      const pins: PinState[] = Array(10).fill('standing');
+      pins[0] = 'knocked';
+
+      // Try to record roll index 2 when no rolls exist yet
+      expect(() => {
+        engine.recordRoll(0, 2, pins);
+      }).toThrow(
+        'Invalid roll index 2 for frame with 0 rolls. Rolls must be recorded sequentially.'
+      );
+    });
+
+    it('should throw error when skipping a roll index', () => {
+      const pins: PinState[] = Array(10).fill('standing');
+      pins[0] = 'knocked';
+
+      // Record first roll
+      engine.recordRoll(0, 0, pins);
+
+      // Try to record roll index 2, skipping index 1
+      expect(() => {
+        engine.recordRoll(0, 2, pins);
+      }).toThrow(
+        'Invalid roll index 2 for frame with 1 rolls. Rolls must be recorded sequentially.'
+      );
+    });
+
+    it('should allow updating an existing roll', () => {
+      const firstRoll: PinState[] = Array(10).fill('standing');
+      firstRoll[0] = 'knocked';
+      firstRoll[1] = 'knocked';
+
+      // Record first roll
+      engine.recordRoll(0, 0, firstRoll);
+
+      const session = engine.getCurrentSession();
+      expect(session?.frames[0].rolls[0].pinsKnocked).toBe(2);
+
+      // Update first roll with different pin count
+      const updatedRoll: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 5; i++) {
+        updatedRoll[i] = 'knocked';
+      }
+      engine.recordRoll(0, 0, updatedRoll);
+
+      const updatedSession = engine.getCurrentSession();
+      expect(updatedSession?.frames[0].rolls[0].pinsKnocked).toBe(5);
+    });
   });
 
   describe('isGameComplete', () => {

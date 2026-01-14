@@ -67,10 +67,17 @@ export class GameEngine implements GameEngineInterface {
     };
 
     // Add roll to frame
-    if (rollIndex >= frame.rolls.length) {
+    if (rollIndex === frame.rolls.length) {
+      // Sequential roll - push to array
       frame.rolls.push(roll);
-    } else {
+    } else if (rollIndex < frame.rolls.length) {
+      // Updating existing roll
       frame.rolls[rollIndex] = roll;
+    } else {
+      // Out of order - rollIndex > frame.rolls.length
+      throw new Error(
+        `Invalid roll index ${rollIndex} for frame with ${frame.rolls.length} rolls. Rolls must be recorded sequentially.`
+      );
     }
 
     // Update frame flags for strikes and spares (frames 1-9)
