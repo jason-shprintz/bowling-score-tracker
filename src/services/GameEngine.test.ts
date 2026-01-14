@@ -289,6 +289,28 @@ describe('GameEngine - Core Game State Management', () => {
       session = engine.getCurrentSession();
       expect(session?.frames[9].isStrike).toBe(false);
       expect(session?.frames[9].rolls[0].pinsKnocked).toBe(8);
+
+      // Add second roll that creates a spare
+      const spareRoll: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 2; i++) {
+        spareRoll[i] = 'knocked';
+      }
+      engine.recordRoll(9, 1, spareRoll);
+
+      session = engine.getCurrentSession();
+      expect(session?.frames[9].isSpare).toBe(true);
+      expect(session?.frames[9].rolls[1].pinsKnocked).toBe(2);
+      expect(session?.frames[9].isStrike).toBe(false);
+
+      // Update second roll to not create a spare
+      const nonSpareRoll: PinState[] = Array(10).fill('standing');
+      nonSpareRoll[0] = 'knocked';
+      engine.recordRoll(9, 1, nonSpareRoll);
+
+      session = engine.getCurrentSession();
+      expect(session?.frames[9].isSpare).toBe(false);
+      expect(session?.frames[9].rolls[1].pinsKnocked).toBe(1);
+      expect(session?.frames[9].isStrike).toBe(false);
     });
   });
 
