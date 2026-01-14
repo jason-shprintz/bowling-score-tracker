@@ -140,6 +140,132 @@ describe('GameEngine - Core Game State Management', () => {
         engine.recordRoll(10, 0, pins);
       }).toThrow('Invalid frame index');
     });
+
+    it('should throw error for negative roll index', () => {
+      const pins: PinState[] = Array(10).fill('standing');
+
+      expect(() => {
+        engine.recordRoll(0, -1, pins);
+      }).toThrow('Invalid roll index: must be non-negative');
+    });
+
+    it('should throw error when recording rolls out of order', () => {
+      const pins: PinState[] = Array(10).fill('standing');
+      pins[0] = 'knocked';
+
+      // Try to record roll index 2 when no rolls exist yet
+      expect(() => {
+        engine.recordRoll(0, 2, pins);
+      }).toThrow(
+        'Invalid roll index 2 for frame with 0 rolls. Rolls must be recorded sequentially.'
+      );
+    });
+
+    it('should throw error when skipping a roll index', () => {
+      const pins: PinState[] = Array(10).fill('standing');
+      pins[0] = 'knocked';
+
+      // Record first roll
+      engine.recordRoll(0, 0, pins);
+
+      // Try to record roll index 2, skipping index 1
+      expect(() => {
+        engine.recordRoll(0, 2, pins);
+      }).toThrow(
+        'Invalid roll index 2 for frame with 1 roll. Rolls must be recorded sequentially.'
+      );
+    });
+
+    it('should allow updating an existing roll', () => {
+      const firstRoll: PinState[] = Array(10).fill('standing');
+      firstRoll[0] = 'knocked';
+      firstRoll[1] = 'knocked';
+
+      // Record first roll
+      engine.recordRoll(0, 0, firstRoll);
+
+      const session = engine.getCurrentSession();
+      expect(session?.frames[0].rolls[0].pinsKnocked).toBe(2);
+
+      // Update first roll with different pin count
+      const updatedRoll: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 5; i++) {
+        updatedRoll[i] = 'knocked';
+      }
+      engine.recordRoll(0, 0, updatedRoll);
+
+      const updatedSession = engine.getCurrentSession();
+      expect(updatedSession?.frames[0].rolls[0].pinsKnocked).toBe(5);
+    });
+
+    it('should clear isStrike flag when updating strike to non-strike', () => {
+      // Record a strike
+      const strikeRoll: PinState[] = Array(10).fill('knocked');
+      engine.recordRoll(0, 0, strikeRoll);
+
+      let session = engine.getCurrentSession();
+      expect(session?.frames[0].isStrike).toBe(true);
+
+      // Update to non-strike
+      const nonStrikeRoll: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 7; i++) {
+        nonStrikeRoll[i] = 'knocked';
+      }
+      engine.recordRoll(0, 0, nonStrikeRoll);
+
+      session = engine.getCurrentSession();
+      expect(session?.frames[0].isStrike).toBe(false);
+      expect(session?.frames[0].rolls[0].pinsKnocked).toBe(7);
+    });
+
+    it('should update isSpare flag when modifying rolls', () => {
+      // Record first roll: 7 pins
+      const firstRoll: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 7; i++) {
+        firstRoll[i] = 'knocked';
+      }
+      engine.recordRoll(0, 0, firstRoll);
+
+      // Record second roll: 3 pins (spare)
+      const secondRoll: PinState[] = Array(10).fill('standing');
+      for (let i = 7; i < 10; i++) {
+        secondRoll[i] = 'knocked';
+      }
+      engine.recordRoll(0, 1, secondRoll);
+
+      let session = engine.getCurrentSession();
+      expect(session?.frames[0].isSpare).toBe(true);
+
+      // Update second roll to only 2 pins (no spare)
+      const updatedSecondRoll: PinState[] = Array(10).fill('standing');
+      updatedSecondRoll[7] = 'knocked';
+      updatedSecondRoll[8] = 'knocked';
+      engine.recordRoll(0, 1, updatedSecondRoll);
+
+      session = engine.getCurrentSession();
+      expect(session?.frames[0].isSpare).toBe(false);
+      expect(session?.frames[0].rolls[1].pinsKnocked).toBe(2);
+    });
+
+    it('should recalculate isStrike when updating first roll in 10th frame', () => {
+      // Record strike in frame 10
+      const strikeRoll: PinState[] = Array(10).fill('knocked');
+      engine.recordRoll(9, 0, strikeRoll);
+
+      let session = engine.getCurrentSession();
+      expect(session?.frames[9].isStrike).toBe(true);
+
+      // Update to non-strike
+      const nonStrikeRoll: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 8; i++) {
+        nonStrikeRoll[i] = 'knocked';
+      }
+      engine.recordRoll(9, 0, nonStrikeRoll);
+
+      session = engine.getCurrentSession();
+      expect(session?.frames[9].isStrike).toBe(false);
+      expect(session?.frames[9].rolls[0].pinsKnocked).toBe(8);
+    });
   });
 
   describe('isGameComplete', () => {
