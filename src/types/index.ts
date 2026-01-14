@@ -143,6 +143,7 @@ export interface GameEngineInterface {
   calculateFrameScore(frameIndex: number): number;
   calculateTotalScore(): number;
   isGameComplete(): boolean;
+  getCurrentSession(): GameSession | null;
 }
 
 export interface StatisticsEngineInterface {
