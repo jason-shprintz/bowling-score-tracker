@@ -55,6 +55,10 @@ export class GameEngine implements GameEngineInterface {
       throw new Error('Invalid frame index');
     }
 
+    if (rollIndex < 0) {
+      throw new Error('Invalid roll index: must be non-negative');
+    }
+
     const frame = this.currentSession.frames[frameIndex];
 
     // Count knocked pins
@@ -82,13 +86,18 @@ export class GameEngine implements GameEngineInterface {
       );
     }
 
+    // Reset and recalculate frame flags for strikes and spares
+    frame.isStrike = false;
+    frame.isSpare = false;
+
     // Update frame flags for strikes and spares (frames 1-9)
     if (frameIndex < 9) {
-      if (rollIndex === 0 && pinsKnocked === 10) {
+      if (frame.rolls.length > 0 && frame.rolls[0].pinsKnocked === 10) {
         frame.isStrike = true;
-      } else if (rollIndex === 1) {
+      } else if (frame.rolls.length >= 2) {
         const firstRollPins = frame.rolls[0]?.pinsKnocked || 0;
-        if (firstRollPins + pinsKnocked === 10) {
+        const secondRollPins = frame.rolls[1]?.pinsKnocked || 0;
+        if (firstRollPins + secondRollPins === 10) {
           frame.isSpare = true;
         }
       }
@@ -96,13 +105,14 @@ export class GameEngine implements GameEngineInterface {
     // 10th frame has special rules - strikes and spares handled differently
     else {
       // In 10th frame, check for strike on first roll
-      if (rollIndex === 0 && pinsKnocked === 10) {
+      if (frame.rolls.length > 0 && frame.rolls[0].pinsKnocked === 10) {
         frame.isStrike = true;
       }
       // Check for spare on second roll (if first wasn't a strike)
-      else if (rollIndex === 1 && !frame.isStrike) {
+      else if (frame.rolls.length >= 2 && !frame.isStrike) {
         const firstRollPins = frame.rolls[0]?.pinsKnocked || 0;
-        if (firstRollPins + pinsKnocked === 10) {
+        const secondRollPins = frame.rolls[1]?.pinsKnocked || 0;
+        if (firstRollPins + secondRollPins === 10) {
           frame.isSpare = true;
         }
       }
