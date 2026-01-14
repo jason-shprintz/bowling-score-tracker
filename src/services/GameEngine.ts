@@ -75,8 +75,10 @@ export class GameEngine implements GameEngineInterface {
       frame.rolls[rollIndex] = roll;
     } else {
       // Out of order - rollIndex > frame.rolls.length
+      const rollCount = frame.rolls.length;
+      const rollWord = rollCount === 1 ? 'roll' : 'rolls';
       throw new Error(
-        `Invalid roll index ${rollIndex} for frame with ${frame.rolls.length} rolls. Rolls must be recorded sequentially.`
+        `Invalid roll index ${rollIndex} for frame with ${rollCount} ${rollWord}. Rolls must be recorded sequentially.`
       );
     }
 

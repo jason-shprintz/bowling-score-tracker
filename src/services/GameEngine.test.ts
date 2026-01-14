@@ -164,7 +164,7 @@ describe('GameEngine - Core Game State Management', () => {
       expect(() => {
         engine.recordRoll(0, 2, pins);
       }).toThrow(
-        'Invalid roll index 2 for frame with 1 rolls. Rolls must be recorded sequentially.'
+        'Invalid roll index 2 for frame with 1 roll. Rolls must be recorded sequentially.'
       );
     });
 
