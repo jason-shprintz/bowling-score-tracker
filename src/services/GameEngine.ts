@@ -169,6 +169,6 @@ export class GameEngine implements GameEngineInterface {
    * Generates a unique session ID
    */
   private generateSessionId(): string {
-    return `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `game_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 }
