@@ -49,5 +49,9 @@
     "ts-jest": "^29.4.6",
     "typescript": "~5.9.2"
   },
+  "overrides": {
+    "inflight": "npm:@zkochan/inflight@^1.0.0",
+    "glob": "^10.3.10"
+  },
   "private": true
 }
