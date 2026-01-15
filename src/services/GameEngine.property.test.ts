@@ -5,7 +5,7 @@
 // Validates: Requirements 2.3, 2.4, 2.5
 
 import { GameEngine } from './GameEngine';
-import { PinState } from '@/types';
+import { PinState, Roll } from '@/types';
 import * as fc from 'fast-check';
 import { PinPhysics } from './PinPhysics';
 
@@ -467,7 +467,7 @@ describe('GameEngine - Property-Based Tests', () => {
           fc.tuple(
             generateValidFirstRoll(), // Next frame first roll
             generateValidFirstRoll(), // Third frame roll (used if next frame is strike)
-            generateValidFirstRoll()  // Alternative for second roll (we'll validate it)
+            generateValidFirstRoll() // Alternative for second roll (we'll validate it)
           ),
           ([nextFirstRoll, thirdFrameRoll, potentialSecondRoll]) => {
             // Arrange: Create a new game
@@ -478,7 +478,9 @@ describe('GameEngine - Property-Based Tests', () => {
             const strike: PinState[] = Array(10).fill('knocked');
             engine.recordRoll(0, 0, strike);
 
-            const nextFirstRollPins = nextFirstRoll.filter(p => p === 'knocked').length;
+            const nextFirstRollPins = nextFirstRoll.filter(
+              (p) => p === 'knocked'
+            ).length;
 
             // Record next frame based on whether first roll is a strike
             if (nextFirstRollPins === 10) {
@@ -488,7 +490,9 @@ describe('GameEngine - Property-Based Tests', () => {
               // Need a third frame for complete bonus calculation
               engine.recordRoll(2, 0, thirdFrameRoll);
 
-              const thirdRollPins = thirdFrameRoll.filter(p => p === 'knocked').length;
+              const thirdRollPins = thirdFrameRoll.filter(
+                (p) => p === 'knocked'
+              ).length;
 
               // Assert: Strike + Strike + thirdRollPins
               const frameScore = engine.calculateFrameScore(0);
@@ -496,19 +500,29 @@ describe('GameEngine - Property-Based Tests', () => {
             } else {
               // Next frame is not a strike - need valid second roll
               // Validate that potentialSecondRoll is valid for nextFirstRoll
-              const firstRollObj = { pins: nextFirstRoll, pinsKnocked: nextFirstRollPins };
-              const validation = sharedPinPhysics.validatePinCombination(potentialSecondRoll, firstRollObj);
-              
+              const firstRollObj = {
+                pins: nextFirstRoll,
+                pinsKnocked: nextFirstRollPins,
+              };
+              const validation = sharedPinPhysics.validatePinCombination(
+                potentialSecondRoll,
+                firstRollObj
+              );
+
               fc.pre(validation.isValid); // Skip this iteration if not valid
-              
-              const nextSecondRollPins = potentialSecondRoll.filter(p => p === 'knocked').length;
+
+              const nextSecondRollPins = potentialSecondRoll.filter(
+                (p) => p === 'knocked'
+              ).length;
 
               engine.recordRoll(1, 0, nextFirstRoll);
               engine.recordRoll(1, 1, potentialSecondRoll);
 
               // Assert: Strike + nextFirstRollPins + nextSecondRollPins
               const frameScore = engine.calculateFrameScore(0);
-              expect(frameScore).toBe(10 + nextFirstRollPins + nextSecondRollPins);
+              expect(frameScore).toBe(
+                10 + nextFirstRollPins + nextSecondRollPins
+              );
             }
           }
         ),
@@ -563,7 +577,7 @@ describe('GameEngine - Property-Based Tests', () => {
           fc.tuple(
             generateValidFirstRoll(), // First roll
             generateValidFirstRoll(), // Second roll (could be first roll if strike, or second roll if not)
-            generateValidFirstRoll()  // Third roll if needed
+            generateValidFirstRoll() // Third roll if needed
           ),
           ([firstRoll, secondRollCandidate, thirdRollCandidate]) => {
             // Arrange: Create a new game
@@ -573,48 +587,67 @@ describe('GameEngine - Property-Based Tests', () => {
             // Act: Record 10th frame based on first roll
             engine.recordRoll(9, 0, firstRoll);
 
-            const roll1Pins = firstRoll.filter(p => p === 'knocked').length;
+            const roll1Pins = firstRoll.filter((p) => p === 'knocked').length;
             let expectedScore = roll1Pins;
 
             if (roll1Pins === 10) {
               // Strike in 10th frame - need 2 more rolls
               engine.recordRoll(9, 1, secondRollCandidate);
-              
-              const roll2Pins = secondRollCandidate.filter(p => p === 'knocked').length;
+
+              const roll2Pins = secondRollCandidate.filter(
+                (p) => p === 'knocked'
+              ).length;
               expectedScore += roll2Pins;
 
               // Third roll - validate it's appropriate for the second roll
               if (roll2Pins === 10) {
                 // Second was also a strike, third can be any valid first roll
                 engine.recordRoll(9, 2, thirdRollCandidate);
-                const roll3Pins = thirdRollCandidate.filter(p => p === 'knocked').length;
+                const roll3Pins = thirdRollCandidate.filter(
+                  (p) => p === 'knocked'
+                ).length;
                 expectedScore += roll3Pins;
               } else {
                 // Second was not a strike, third must be valid second roll
-                const secondRollObj = { pins: secondRollCandidate, pinsKnocked: roll2Pins };
-                const validation = sharedPinPhysics.validatePinCombination(thirdRollCandidate, secondRollObj);
+                const secondRollObj = {
+                  pins: secondRollCandidate,
+                  pinsKnocked: roll2Pins,
+                };
+                const validation = sharedPinPhysics.validatePinCombination(
+                  thirdRollCandidate,
+                  secondRollObj
+                );
                 fc.pre(validation.isValid); // Skip if not valid
-                
+
                 engine.recordRoll(9, 2, thirdRollCandidate);
-                const roll3Pins = thirdRollCandidate.filter(p => p === 'knocked').length;
+                const roll3Pins = thirdRollCandidate.filter(
+                  (p) => p === 'knocked'
+                ).length;
                 expectedScore += roll3Pins;
               }
             } else {
               // Not a strike - validate second roll
               const firstRollObj = { pins: firstRoll, pinsKnocked: roll1Pins };
-              const validation = sharedPinPhysics.validatePinCombination(secondRollCandidate, firstRollObj);
+              const validation = sharedPinPhysics.validatePinCombination(
+                secondRollCandidate,
+                firstRollObj
+              );
               fc.pre(validation.isValid); // Skip if not valid
-              
+
               engine.recordRoll(9, 1, secondRollCandidate);
-              
-              const roll2Pins = secondRollCandidate.filter(p => p === 'knocked').length;
+
+              const roll2Pins = secondRollCandidate.filter(
+                (p) => p === 'knocked'
+              ).length;
               expectedScore += roll2Pins;
 
               if (roll1Pins + roll2Pins === 10) {
                 // Spare - need third roll
                 engine.recordRoll(9, 2, thirdRollCandidate);
-                
-                const roll3Pins = thirdRollCandidate.filter(p => p === 'knocked').length;
+
+                const roll3Pins = thirdRollCandidate.filter(
+                  (p) => p === 'knocked'
+                ).length;
                 expectedScore += roll3Pins;
               }
             }
@@ -699,13 +732,21 @@ describe('GameEngine - Property-Based Tests', () => {
 
             // Act: Record two rolls with valid physics
             engine.recordRoll(frameIndex, 0, firstPins);
-            
+
             // Validate second roll is valid for first roll
-            const firstRollPins = firstPins.filter(p => p === 'knocked').length;
-            const firstRollObj = { pins: firstPins, pinsKnocked: firstRollPins };
-            const validation = sharedPinPhysics.validatePinCombination(secondPinsCandidate, firstRollObj);
+            const firstRollPins = firstPins.filter(
+              (p) => p === 'knocked'
+            ).length;
+            const firstRollObj = {
+              pins: firstPins,
+              pinsKnocked: firstRollPins,
+            };
+            const validation = sharedPinPhysics.validatePinCombination(
+              secondPinsCandidate,
+              firstRollObj
+            );
             fc.pre(validation.isValid); // Skip if not valid
-            
+
             engine.recordRoll(frameIndex, 1, secondPinsCandidate);
 
             // Assert: Verify both rolls maintain pin state consistency
@@ -772,6 +813,416 @@ describe('GameEngine - Property-Based Tests', () => {
             expect(roll.pinsKnocked).toBe(expectedKnockedCount);
           }
         ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  describe('Property 2: Pin Selection Validation', () => {
+    /**
+     * Property: For any pin selection attempt, only physically possible pin combinations
+     * should be accepted, and impossible combinations (like knocking down pin 7 without
+     * knocking down pins 4 or 10) should be rejected.
+     *
+     * This property validates that:
+     * 1. All physically possible pin combinations are accepted
+     * 2. All physically impossible pin combinations are rejected
+     * 3. Validation considers previous roll state correctly
+     * 4. Invalid pins are correctly identified
+     */
+
+    /**
+     * Generates arbitrary pin states (may be physically impossible)
+     */
+    function generateArbitraryPinState(): fc.Arbitrary<PinState[]> {
+      return fc.array(
+        fc.constantFrom('standing' as PinState, 'knocked' as PinState),
+        {
+          minLength: 10,
+          maxLength: 10,
+        }
+      );
+    }
+
+    /**
+     * Generates known physically impossible pin combinations
+     */
+    function generateImpossiblePinCombination(): fc.Arbitrary<PinState[]> {
+      return fc.oneof(
+        // Pin 7 without pin 4
+        fc.constant([
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'knocked',
+          'standing',
+          'standing',
+          'standing',
+        ] as PinState[]),
+
+        // Pin 10 without pin 6
+        fc.constant([
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'knocked',
+        ] as PinState[]),
+
+        // Pin 8 without pin 5
+        fc.constant([
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'knocked',
+          'standing',
+          'standing',
+        ] as PinState[]),
+
+        // Pin 9 without pin 6
+        fc.constant([
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'knocked',
+          'standing',
+        ] as PinState[]),
+
+        // Pin 4 without pin 1 or 2
+        fc.constant([
+          'standing',
+          'standing',
+          'standing',
+          'knocked',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+        ] as PinState[]),
+
+        // Pin 6 without pin 1 or 3
+        fc.constant([
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'knocked',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+        ] as PinState[]),
+
+        // Pin 2 without pin 1
+        fc.constant([
+          'standing',
+          'knocked',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+        ] as PinState[]),
+
+        // Pin 3 without pin 1
+        fc.constant([
+          'standing',
+          'standing',
+          'knocked',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+        ] as PinState[]),
+
+        // Pin 5 without pin 1
+        fc.constant([
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'knocked',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+        ] as PinState[]),
+
+        // Multiple back pins without front pins (7, 8, 9, 10 without dependencies)
+        fc.constant([
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'standing',
+          'knocked',
+          'knocked',
+          'knocked',
+          'knocked',
+        ] as PinState[])
+      );
+    }
+
+    it('should accept all physically possible pin combinations', () => {
+      fc.assert(
+        fc.property(generateValidFirstRoll(), (pins) => {
+          // Arrange: Create PinPhysics instance
+          const pinPhysics = new PinPhysics();
+
+          // Act: Validate the physically possible combination
+          const result = pinPhysics.validatePinCombination(pins);
+
+          // Assert: Should be valid
+          expect(result.isValid).toBe(true);
+          expect(result.errors).toHaveLength(0);
+          expect(result.invalidPins).toHaveLength(0);
+        }),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should reject all physically impossible pin combinations', () => {
+      fc.assert(
+        fc.property(generateImpossiblePinCombination(), (pins) => {
+          // Arrange: Create PinPhysics instance
+          const pinPhysics = new PinPhysics();
+
+          // Act: Validate the physically impossible combination
+          const result = pinPhysics.validatePinCombination(pins);
+
+          // Assert: Should be invalid
+          expect(result.isValid).toBe(false);
+          expect(result.errors.length).toBeGreaterThan(0);
+          expect(result.invalidPins.length).toBeGreaterThan(0);
+        }),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should correctly validate second roll considering first roll state', () => {
+      fc.assert(
+        fc.property(
+          fc.tuple(generateValidFirstRoll(), generateValidFirstRoll()),
+          ([firstRoll, secondRollCandidate]) => {
+            // Arrange: Create PinPhysics instance
+            const pinPhysics = new PinPhysics();
+
+            // Skip if first roll is a strike (no second roll needed)
+            const firstRollPins = firstRoll.filter(
+              (p) => p === 'knocked'
+            ).length;
+            fc.pre(firstRollPins < 10);
+
+            const firstRollObj: Roll = {
+              pins: firstRoll,
+              pinsKnocked: firstRollPins,
+            };
+
+            // Act: Validate second roll considering first roll
+            const result = pinPhysics.validatePinCombination(
+              secondRollCandidate,
+              firstRollObj
+            );
+
+            // Assert: Validation should check both physics and previous roll state
+            if (result.isValid) {
+              // If valid, ensure no pins are being re-knocked
+              for (let i = 0; i < 10; i++) {
+                if (
+                  firstRoll[i] === 'knocked' &&
+                  secondRollCandidate[i] === 'knocked'
+                ) {
+                  // This should have been caught as invalid
+                  fail(
+                    'Validation should reject re-knocking already knocked pins'
+                  );
+                }
+              }
+
+              // Combined state should be physically possible
+              const combinedPins = firstRoll.map((pin, i) =>
+                pin === 'knocked' || secondRollCandidate[i] === 'knocked'
+                  ? 'knocked'
+                  : 'standing'
+              ) as PinState[];
+              expect(pinPhysics.isPhysicallyPossible(combinedPins)).toBe(true);
+            } else {
+              // If invalid, should have errors and invalid pins identified
+              expect(result.errors.length).toBeGreaterThan(0);
+              expect(result.invalidPins.length).toBeGreaterThan(0);
+            }
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should identify all invalid pins in impossible combinations', () => {
+      fc.assert(
+        fc.property(generateImpossiblePinCombination(), (pins) => {
+          // Arrange: Create PinPhysics instance
+          const pinPhysics = new PinPhysics();
+
+          // Act: Get invalid pins
+          const invalidPins = pinPhysics.getInvalidPins(pins);
+
+          // Assert: Should identify at least one invalid pin
+          expect(invalidPins.length).toBeGreaterThan(0);
+
+          // All identified invalid pins should actually be knocked in the combination
+          invalidPins.forEach((pinNumber) => {
+            expect(pins[pinNumber - 1]).toBe('knocked');
+          });
+        }),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should validate that isPhysicallyPossible matches validatePinCombination for first rolls', () => {
+      fc.assert(
+        fc.property(generateArbitraryPinState(), (pins) => {
+          // Arrange: Create PinPhysics instance
+          const pinPhysics = new PinPhysics();
+
+          // Act: Check both validation methods
+          const isPossible = pinPhysics.isPhysicallyPossible(pins);
+          const validationResult = pinPhysics.validatePinCombination(pins);
+
+          // Assert: Both methods should agree on validity
+          expect(isPossible).toBe(validationResult.isValid);
+
+          // If invalid, should have errors
+          if (!isPossible) {
+            expect(validationResult.errors.length).toBeGreaterThan(0);
+            expect(validationResult.invalidPins.length).toBeGreaterThan(0);
+          }
+        }),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should handle edge case of all pins standing as valid', () => {
+      fc.assert(
+        fc.property(fc.constant(undefined), () => {
+          // Arrange: Create PinPhysics instance
+          const pinPhysics = new PinPhysics();
+          const allStanding: PinState[] = Array(10).fill('standing');
+
+          // Act: Validate all pins standing
+          const result = pinPhysics.validatePinCombination(allStanding);
+
+          // Assert: Should be valid (no pins knocked, no physics violations)
+          expect(result.isValid).toBe(true);
+          expect(result.errors).toHaveLength(0);
+          expect(result.invalidPins).toHaveLength(0);
+        }),
+        { numRuns: 10 }
+      );
+    });
+
+    it('should handle edge case of all pins knocked as valid', () => {
+      fc.assert(
+        fc.property(fc.constant(undefined), () => {
+          // Arrange: Create PinPhysics instance
+          const pinPhysics = new PinPhysics();
+          const allKnocked: PinState[] = Array(10).fill('knocked');
+
+          // Act: Validate all pins knocked (strike)
+          const result = pinPhysics.validatePinCombination(allKnocked);
+
+          // Assert: Should be valid (strike is always physically possible)
+          expect(result.isValid).toBe(true);
+          expect(result.errors).toHaveLength(0);
+          expect(result.invalidPins).toHaveLength(0);
+        }),
+        { numRuns: 10 }
+      );
+    });
+
+    it('should reject pin arrays with incorrect length', () => {
+      fc.assert(
+        fc.property(
+          fc.oneof(
+            fc.array(
+              fc.constantFrom('standing' as PinState, 'knocked' as PinState),
+              {
+                minLength: 0,
+                maxLength: 9,
+              }
+            ),
+            fc.array(
+              fc.constantFrom('standing' as PinState, 'knocked' as PinState),
+              {
+                minLength: 11,
+                maxLength: 15,
+              }
+            )
+          ),
+          (pins) => {
+            // Arrange: Create PinPhysics instance
+            const pinPhysics = new PinPhysics();
+
+            // Act: Validate incorrect length array
+            const result = pinPhysics.validatePinCombination(pins);
+
+            // Assert: Should be invalid due to length
+            expect(result.isValid).toBe(false);
+            expect(result.errors).toContain(
+              'Pin array must contain exactly 10 elements'
+            );
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+
+    it('should maintain validation consistency across multiple calls', () => {
+      fc.assert(
+        fc.property(generateArbitraryPinState(), (pins) => {
+          // Arrange: Create PinPhysics instance
+          const pinPhysics = new PinPhysics();
+
+          // Act: Validate same combination multiple times
+          const result1 = pinPhysics.validatePinCombination(pins);
+          const result2 = pinPhysics.validatePinCombination(pins);
+          const result3 = pinPhysics.validatePinCombination(pins);
+
+          // Assert: All results should be identical
+          expect(result1.isValid).toBe(result2.isValid);
+          expect(result2.isValid).toBe(result3.isValid);
+          expect(result1.errors).toEqual(result2.errors);
+          expect(result2.errors).toEqual(result3.errors);
+          expect(result1.invalidPins).toEqual(result2.invalidPins);
+          expect(result2.invalidPins).toEqual(result3.invalidPins);
+        }),
         { numRuns: 100 }
       );
     });
