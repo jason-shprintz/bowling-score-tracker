@@ -24,39 +24,34 @@ describe('GameEngine - Property-Based Tests', () => {
      */
 
     it('should calculate perfect game score correctly', () => {
-      fc.assert(
-        fc.property(fc.constant(null), () => {
-          // Arrange: Create a new game
-          const engine = new GameEngine();
-          engine.startNewGame('open');
+      // Arrange: Create a new game
+      const engine = new GameEngine();
+      engine.startNewGame('open');
 
-          // Act: Record a perfect game (12 strikes)
-          const strike: PinState[] = Array(10).fill('knocked');
+      // Act: Record a perfect game (12 strikes)
+      const strike: PinState[] = Array(10).fill('knocked');
 
-          // Frames 1-9: one strike each
-          for (let frame = 0; frame < 9; frame++) {
-            engine.recordRoll(frame, 0, strike);
-          }
+      // Frames 1-9: one strike each
+      for (let frame = 0; frame < 9; frame++) {
+        engine.recordRoll(frame, 0, strike);
+      }
 
-          // Frame 10: three strikes
-          engine.recordRoll(9, 0, strike);
-          engine.recordRoll(9, 1, strike);
-          engine.recordRoll(9, 2, strike);
+      // Frame 10: three strikes
+      engine.recordRoll(9, 0, strike);
+      engine.recordRoll(9, 1, strike);
+      engine.recordRoll(9, 2, strike);
 
-          // Assert: Perfect game should score 300
-          const totalScore = engine.calculateTotalScore();
-          expect(totalScore).toBe(300);
+      // Assert: Perfect game should score 300
+      const totalScore = engine.calculateTotalScore();
+      expect(totalScore).toBe(300);
 
-          // Each of the first 9 frames should score 30 (10 + 10 + 10)
-          for (let frame = 0; frame < 9; frame++) {
-            expect(engine.calculateFrameScore(frame)).toBe(30);
-          }
+      // Each of the first 9 frames should score 30 (10 + 10 + 10)
+      for (let frame = 0; frame < 9; frame++) {
+        expect(engine.calculateFrameScore(frame)).toBe(30);
+      }
 
-          // Frame 10 should score 30 (10 + 10 + 10)
-          expect(engine.calculateFrameScore(9)).toBe(30);
-        }),
-        { numRuns: 10 } // Perfect game is deterministic, fewer runs needed
-      );
+      // Frame 10 should score 30 (10 + 10 + 10)
+      expect(engine.calculateFrameScore(9)).toBe(30);
     });
 
     it('should calculate all-spares game score correctly', () => {
