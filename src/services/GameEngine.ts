@@ -537,7 +537,23 @@ export class GameEngine implements GameEngineInterface {
     }
 
     const frame = this.currentSession.frames[frameIndex];
-    const previousRoll = rollIndex > 0 ? frame.rolls[rollIndex - 1] : undefined;
+    let previousRoll = rollIndex > 0 ? frame.rolls[rollIndex - 1] : undefined;
+
+    // Frame 10 special rules: pins reset after strikes and spares
+    if (frameIndex === 9 && previousRoll) {
+      // If previous roll was a strike, pins are reset
+      if (previousRoll.pinsKnocked === 10) {
+        previousRoll = undefined;
+      }
+      // If we're on the third roll and first two rolls made a spare, pins are reset
+      else if (rollIndex === 2 && frame.rolls.length >= 2) {
+        const firstRoll = frame.rolls[0];
+        const secondRoll = frame.rolls[1];
+        if (firstRoll.pinsKnocked + secondRoll.pinsKnocked === 10) {
+          previousRoll = undefined;
+        }
+      }
+    }
 
     return this.pinPhysics.validatePinCombination(pins, previousRoll);
   }
