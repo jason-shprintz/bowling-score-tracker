@@ -142,10 +142,22 @@ describe('GameEngine - Property-Based Tests', () => {
             );
             expect(strikeFrameScore).toBe(20); // 10 + 10 (spare total)
 
-            // Spare frame needs next roll for bonus calculation
-            // Without next frame, spare should still calculate base score
+            // Spare frame needs next roll for bonus calculation.
+            // In an incomplete game state (no next roll yet), spare frame score is just 10.
             const spareFrameScore = engine.calculateFrameScore(1);
             expect(spareFrameScore).toBe(10); // 10 + 0 (no next roll yet)
+
+            // Now add a third frame to provide the next roll for the spare bonus.
+            const bonusRollPins = 4;
+            const thirdFrameRoll1: PinState[] = Array(10).fill('standing');
+            for (let i = 0; i < bonusRollPins; i++) {
+              thirdFrameRoll1[i] = 'knocked';
+            }
+            engine.recordRoll(2, 0, thirdFrameRoll1);
+
+            // With the next roll recorded, the spare frame should now include the bonus.
+            const spareFrameScoreWithBonus = engine.calculateFrameScore(1);
+            expect(spareFrameScoreWithBonus).toBe(10 + bonusRollPins);
           }
         ),
         { numRuns: 50 }
