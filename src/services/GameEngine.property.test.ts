@@ -121,38 +121,6 @@ function generateValidPinCombination(): fc.Arbitrary<PinState[]> {
 }
 
 /**
- * Generates a valid second roll given a first roll
- * Ensures no pins are knocked twice and physics are respected
- */
-function generateValidSecondRoll(
-  firstRoll: PinState[]
-): fc.Arbitrary<PinState[]> {
-  const standingPins = firstRoll
-    .map((pin, index) => (pin === 'standing' ? index : -1))
-    .filter((i) => i !== -1);
-
-  if (standingPins.length === 0) {
-    // No pins standing, can't knock any more
-    return fc.constant(Array(10).fill('standing') as PinState[]);
-  }
-
-  // Generate combinations of standing pins that are physically possible
-  return fc.oneof(
-    // No additional pins
-    fc.constant(Array(10).fill('standing') as PinState[]),
-
-    // Knock down some valid combinations of remaining pins
-    ...standingPins
-      .slice(0, Math.min(5, standingPins.length))
-      .map((pinIndex) => {
-        const secondRoll: PinState[] = Array(10).fill('standing') as PinState[];
-        secondRoll[pinIndex] = 'knocked';
-        return fc.constant(secondRoll);
-      })
-  );
-}
-
-/**
  * Generates valid regular frame combinations (non-strike, non-spare)
  */
 function generateValidRegularFrame(): fc.Arbitrary<
