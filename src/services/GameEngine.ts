@@ -402,6 +402,35 @@ export class GameEngine implements GameEngineInterface {
       }
     }
 
+    // Additional frame 10 rules involving a potential third roll
+    if (frame.rolls.length === 3) {
+      const firstRoll = frame.rolls[0];
+      const secondRoll = frame.rolls[1];
+      const thirdRoll = frame.rolls[2];
+
+      if (firstRoll.pinsKnocked < 10) {
+        // First roll is not a strike. If first two rolls don't make a spare,
+        // a third roll is not allowed in frame 10.
+        const totalFirstTwo = firstRoll.pinsKnocked + secondRoll.pinsKnocked;
+        if (totalFirstTwo < 10) {
+          errors.push(
+            'Frame 10: Third roll not allowed when first two rolls do not result in a strike or spare'
+          );
+        }
+      } else {
+        // First roll is a strike. If the second roll is not also a strike,
+        // the second and third rolls together cannot exceed 10 pins.
+        if (secondRoll.pinsKnocked < 10) {
+          const totalSecondThird =
+            secondRoll.pinsKnocked + thirdRoll.pinsKnocked;
+          if (totalSecondThird > 10) {
+            errors.push(
+              `Frame 10: Second and third rolls after a strike total ${totalSecondThird} exceeds 10`
+            );
+          }
+        }
+      }
+    }
     return errors;
   }
 
