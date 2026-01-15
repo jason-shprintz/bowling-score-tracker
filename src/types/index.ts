@@ -6,6 +6,13 @@ export type GameMode = 'league' | 'open';
 export type HapticType = 'success' | 'error' | 'selection';
 export type TimePeriod = 'week' | 'month' | 'year' | 'all';
 
+// Pin Physics Validation
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  invalidPins: number[];
+}
+
 // Core Game Interfaces
 export interface Roll {
   pins: PinState[];
@@ -145,6 +152,11 @@ export interface GameEngineInterface {
   isGameComplete(): boolean;
   getCurrentSession(): GameSession | null;
   validateGameState(): { isValid: boolean; errors: string[] };
+  validatePinPhysics(
+    pins: PinState[],
+    frameIndex: number,
+    rollIndex: number
+  ): { isValid: boolean; errors: string[]; invalidPins: number[] };
 }
 
 export interface StatisticsEngineInterface {
