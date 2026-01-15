@@ -206,7 +206,7 @@ Pin layout (standard 10-pin bowling):
 Pin dependencies:
 - Pin 1: Always accessible (head pin)
 - Pin 2, 3: Require pin 1
-- Pin 4: Requires pin 1 or pin 2  
+- Pin 4: Requires pin 1 or pin 2
 - Pin 5: Requires pin 1
 - Pin 6: Requires pin 1 or pin 3
 - Pin 7: Requires pin 4
