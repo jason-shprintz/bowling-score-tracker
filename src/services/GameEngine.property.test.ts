@@ -7,6 +7,225 @@
 import { GameEngine } from './GameEngine';
 import { PinState } from '@/types';
 import * as fc from 'fast-check';
+import { PinPhysics } from './PinPhysics';
+
+/**
+ * Generates physically valid pin combinations for first roll
+ * Uses bowling physics rules to ensure generated combinations are possible
+ */
+function generateValidFirstRoll(): fc.Arbitrary<PinState[]> {
+  return fc.oneof(
+    // All pins standing (0 pins knocked)
+    fc.constant(Array(10).fill('standing') as PinState[]),
+
+    // Strike (all pins knocked)
+    fc.constant(Array(10).fill('knocked') as PinState[]),
+
+    // Head pin only (1 pin)
+    fc.constant([
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // Head pin + pin 2 (2 pins)
+    fc.constant([
+      'knocked',
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // Head pin + pin 3 (2 pins)
+    fc.constant([
+      'knocked',
+      'standing',
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // Head pin + pin 2 + pin 3 (3 pins)
+    fc.constant([
+      'knocked',
+      'knocked',
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // Head pin + pin 2 + pin 4 (3 pins)
+    fc.constant([
+      'knocked',
+      'knocked',
+      'standing',
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // Head pin + pin 5 (2 pins)
+    fc.constant([
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // Head pin + pin 3 + pin 6 (3 pins)
+    fc.constant([
+      'knocked',
+      'standing',
+      'knocked',
+      'standing',
+      'standing',
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // Pocket hit (1, 2, 3, 5) - 4 pins
+    fc.constant([
+      'knocked',
+      'knocked',
+      'knocked',
+      'standing',
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // Brooklyn (1, 3, 5, 6) - 4 pins
+    fc.constant([
+      'knocked',
+      'standing',
+      'knocked',
+      'standing',
+      'knocked',
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // Left side (1, 2, 4, 7) - 4 pins
+    fc.constant([
+      'knocked',
+      'knocked',
+      'standing',
+      'knocked',
+      'standing',
+      'standing',
+      'knocked',
+      'standing',
+      'standing',
+      'standing',
+    ] as PinState[]),
+
+    // 9 pins (leaving pin 10)
+    fc.constant([
+      'knocked',
+      'knocked',
+      'knocked',
+      'knocked',
+      'knocked',
+      'knocked',
+      'knocked',
+      'knocked',
+      'knocked',
+      'standing',
+    ] as PinState[])
+  );
+}
+
+/**
+ * Generates physically valid second roll given first roll
+ */
+function generateValidSecondRoll(firstRoll: PinState[]): fc.Arbitrary<PinState[]> {
+  const pinPhysics = new PinPhysics();
+  
+  // Generate a list of valid second roll combinations
+  const validCombinations: PinState[][] = [];
+  
+  // Option 1: No additional pins knocked
+  validCombinations.push(Array(10).fill('standing') as PinState[]);
+  
+  // Option 2: Try to knock remaining pins in valid ways
+  // Generate all possible combinations of remaining standing pins
+  const standingPins: number[] = [];
+  firstRoll.forEach((state, index) => {
+    if (state === 'standing') {
+      standingPins.push(index + 1);
+    }
+  });
+  
+  // Try various combinations of knocking down remaining pins
+  for (let i = 0; i < Math.pow(2, standingPins.length); i++) {
+    const secondRoll: PinState[] = Array(10).fill('standing') as PinState[];
+    
+    // Convert number to binary to represent which pins to knock
+    for (let j = 0; j < standingPins.length; j++) {
+      if ((i & (1 << j)) !== 0) {
+        secondRoll[standingPins[j] - 1] = 'knocked';
+      }
+    }
+    
+    // Validate this combination
+    const firstRollObj = { pins: firstRoll, pinsKnocked: firstRoll.filter(p => p === 'knocked').length };
+    const result = pinPhysics.validatePinCombination(secondRoll, firstRollObj);
+    
+    if (result.isValid) {
+      validCombinations.push(secondRoll);
+    }
+  }
+  
+  // Return arbitrary from valid combinations
+  if (validCombinations.length > 0) {
+    return fc.constantFrom(...validCombinations);
+  }
+  
+  // Fallback to no pins if no valid combinations found
+  return fc.constant(Array(10).fill('standing') as PinState[]);
+}
 
 /**
  * Generates valid regular frame combinations (non-strike, non-spare)
@@ -263,7 +482,7 @@ describe('GameEngine - Property-Based Tests', () => {
       );
     });
 
-    it.skip('should calculate regular frame scores correctly', () => {
+    it('should calculate regular frame scores correctly', () => {
       fc.assert(
         fc.property(generateValidRegularFrame(), ([firstRoll, secondRoll]) => {
           // Arrange: Create a new game
@@ -289,12 +508,11 @@ describe('GameEngine - Property-Based Tests', () => {
       );
     });
 
-    it.skip('should calculate strike bonus correctly across multiple frames', () => {
+    it('should calculate strike bonus correctly across multiple frames', () => {
       fc.assert(
         fc.property(
-          fc.integer({ min: 0, max: 10 }), // Next frame first roll
-          fc.integer({ min: 0, max: 10 }), // Next frame second roll (will be constrained)
-          (nextFirstRoll, nextSecondRollRaw) => {
+          generateValidFirstRoll(), // Next frame first roll
+          (nextFirstRoll) => {
             // Arrange: Create a new game
             const engine = new GameEngine();
             engine.startNewGame('open');
@@ -303,43 +521,36 @@ describe('GameEngine - Property-Based Tests', () => {
             const strike: PinState[] = Array(10).fill('knocked');
             engine.recordRoll(0, 0, strike);
 
+            const nextFirstRollPins = nextFirstRoll.filter(p => p === 'knocked').length;
+
             // Record next frame based on whether first roll is a strike
-            if (nextFirstRoll === 10) {
+            if (nextFirstRollPins === 10) {
               // Next frame is also a strike
               engine.recordRoll(1, 0, strike);
 
               // Need a third frame for complete bonus calculation
-              const thirdFrameRoll: PinState[] = Array(10).fill('standing');
-              const thirdRollPins = Math.min(nextSecondRollRaw, 10);
-              for (let i = 0; i < thirdRollPins; i++) {
-                thirdFrameRoll[i] = 'knocked';
-              }
-              engine.recordRoll(2, 0, thirdFrameRoll);
+              const thirdFrameRoll = generateValidFirstRoll();
+              const sample = fc.sample(thirdFrameRoll, 1)[0];
+              engine.recordRoll(2, 0, sample);
+
+              const thirdRollPins = sample.filter(p => p === 'knocked').length;
 
               // Assert: Strike + Strike + thirdRollPins
               const frameScore = engine.calculateFrameScore(0);
               expect(frameScore).toBe(10 + 10 + thirdRollPins);
             } else {
-              // Next frame is not a strike
-              const maxSecondRoll = 10 - nextFirstRoll;
-              const nextSecondRoll = Math.min(nextSecondRollRaw, maxSecondRoll);
+              // Next frame is not a strike - generate valid second roll
+              const nextSecondRoll = generateValidSecondRoll(nextFirstRoll);
+              const sample = fc.sample(nextSecondRoll, 1)[0];
 
-              const nextRoll1: PinState[] = Array(10).fill('standing');
-              const nextRoll2: PinState[] = Array(10).fill('standing');
+              const nextSecondRollPins = sample.filter(p => p === 'knocked').length;
 
-              for (let i = 0; i < nextFirstRoll; i++) {
-                nextRoll1[i] = 'knocked';
-              }
-              for (let i = 0; i < nextSecondRoll; i++) {
-                nextRoll2[i] = 'knocked';
-              }
+              engine.recordRoll(1, 0, nextFirstRoll);
+              engine.recordRoll(1, 1, sample);
 
-              engine.recordRoll(1, 0, nextRoll1);
-              engine.recordRoll(1, 1, nextRoll2);
-
-              // Assert: Strike + nextFirstRoll + nextSecondRoll
+              // Assert: Strike + nextFirstRollPins + nextSecondRollPins
               const frameScore = engine.calculateFrameScore(0);
-              expect(frameScore).toBe(10 + nextFirstRoll + nextSecondRoll);
+              expect(frameScore).toBe(10 + nextFirstRollPins + nextSecondRollPins);
             }
           }
         ),
@@ -388,63 +599,54 @@ describe('GameEngine - Property-Based Tests', () => {
       );
     });
 
-    it.skip('should handle 10th frame scoring correctly', () => {
+    it('should handle 10th frame scoring correctly', () => {
       fc.assert(
         fc.property(
-          fc.integer({ min: 0, max: 10 }), // First roll
-          fc.integer({ min: 0, max: 10 }), // Second roll
-          fc.integer({ min: 0, max: 10 }), // Third roll (if needed)
-          (roll1, roll2Raw, roll3) => {
+          generateValidFirstRoll(), // First roll
+          (firstRoll) => {
             // Arrange: Create a new game
             const engine = new GameEngine();
             engine.startNewGame('open');
 
             // Act: Record 10th frame based on first roll
-            const firstRoll: PinState[] = Array(10).fill('standing');
-            for (let i = 0; i < Math.min(roll1, 10); i++) {
-              firstRoll[i] = 'knocked';
-            }
             engine.recordRoll(9, 0, firstRoll);
 
-            let expectedScore = Math.min(roll1, 10);
+            const roll1Pins = firstRoll.filter(p => p === 'knocked').length;
+            let expectedScore = roll1Pins;
 
-            if (roll1 === 10) {
+            if (roll1Pins === 10) {
               // Strike in 10th frame - need 2 more rolls
-              const secondRoll: PinState[] = Array(10).fill('standing');
-              const roll2Pins = Math.min(roll2Raw, 10);
-              for (let i = 0; i < roll2Pins; i++) {
-                secondRoll[i] = 'knocked';
-              }
+              const secondRoll = fc.sample(generateValidFirstRoll(), 1)[0];
               engine.recordRoll(9, 1, secondRoll);
+              
+              const roll2Pins = secondRoll.filter(p => p === 'knocked').length;
               expectedScore += roll2Pins;
 
-              const thirdRoll: PinState[] = Array(10).fill('standing');
-              const roll3Pins = Math.min(roll3, 10);
-              for (let i = 0; i < roll3Pins; i++) {
-                thirdRoll[i] = 'knocked';
+              // Third roll - if second was not a strike, generate valid second roll
+              let thirdRoll: PinState[];
+              if (roll2Pins === 10) {
+                thirdRoll = fc.sample(generateValidFirstRoll(), 1)[0];
+              } else {
+                thirdRoll = fc.sample(generateValidSecondRoll(secondRoll), 1)[0];
               }
               engine.recordRoll(9, 2, thirdRoll);
+              
+              const roll3Pins = thirdRoll.filter(p => p === 'knocked').length;
               expectedScore += roll3Pins;
             } else {
-              // Not a strike - constrain second roll
-              const maxRoll2 = 10 - roll1;
-              const roll2 = Math.min(roll2Raw, maxRoll2);
-
-              const secondRoll: PinState[] = Array(10).fill('standing');
-              for (let i = 0; i < roll2; i++) {
-                secondRoll[i] = 'knocked';
-              }
+              // Not a strike - generate valid second roll
+              const secondRoll = fc.sample(generateValidSecondRoll(firstRoll), 1)[0];
               engine.recordRoll(9, 1, secondRoll);
-              expectedScore += roll2;
+              
+              const roll2Pins = secondRoll.filter(p => p === 'knocked').length;
+              expectedScore += roll2Pins;
 
-              if (roll1 + roll2 === 10) {
+              if (roll1Pins + roll2Pins === 10) {
                 // Spare - need third roll
-                const thirdRoll: PinState[] = Array(10).fill('standing');
-                const roll3Pins = Math.min(roll3, 10);
-                for (let i = 0; i < roll3Pins; i++) {
-                  thirdRoll[i] = 'knocked';
-                }
+                const thirdRoll = fc.sample(generateValidFirstRoll(), 1)[0];
                 engine.recordRoll(9, 2, thirdRoll);
+                
+                const roll3Pins = thirdRoll.filter(p => p === 'knocked').length;
                 expectedScore += roll3Pins;
               }
             }
@@ -469,14 +671,11 @@ describe('GameEngine - Property-Based Tests', () => {
      * 2. The pinsKnocked count matches the actual number of 'knocked' pins
      * 3. The pin array maintains its integrity (length and values)
      */
-    it.skip('should maintain pin state consistency for any valid pin selection', () => {
+    it('should maintain pin state consistency for any valid pin selection', () => {
       fc.assert(
         fc.property(
-          // Generate arbitrary pin states (array of 10 pins, each either 'standing' or 'knocked')
-          fc.array(fc.constantFrom<PinState>('standing', 'knocked'), {
-            minLength: 10,
-            maxLength: 10,
-          }),
+          // Generate valid pin states using physics rules
+          generateValidFirstRoll(),
           // Generate arbitrary frame index (0-9)
           fc.integer({ min: 0, max: 9 }),
           (pins, frameIndex) => {
@@ -516,26 +715,22 @@ describe('GameEngine - Property-Based Tests', () => {
       );
     });
 
-    it.skip('should maintain pin state consistency across multiple rolls in a frame', () => {
+    it('should maintain pin state consistency across multiple rolls in a frame', () => {
       fc.assert(
         fc.property(
-          // Generate two pin state arrays for two rolls
-          fc.array(fc.constantFrom<PinState>('standing', 'knocked'), {
-            minLength: 10,
-            maxLength: 10,
-          }),
-          fc.array(fc.constantFrom<PinState>('standing', 'knocked'), {
-            minLength: 10,
-            maxLength: 10,
-          }),
+          // Generate valid first roll
+          generateValidFirstRoll(),
           fc.integer({ min: 0, max: 9 }),
-          (firstPins, secondPins, frameIndex) => {
+          (firstPins, frameIndex) => {
             // Arrange: Create a new game
             const engine = new GameEngine();
             engine.startNewGame('open');
 
-            // Act: Record two rolls
+            // Act: Record two rolls with valid physics
             engine.recordRoll(frameIndex, 0, firstPins);
+            
+            // Generate valid second roll based on first roll
+            const secondPins = fc.sample(generateValidSecondRoll(firstPins), 1)[0];
             engine.recordRoll(frameIndex, 1, secondPins);
 
             // Assert: Verify both rolls maintain pin state consistency
@@ -566,18 +761,12 @@ describe('GameEngine - Property-Based Tests', () => {
       );
     });
 
-    it.skip('should maintain pin state consistency when updating existing rolls', () => {
+    it('should maintain pin state consistency when updating existing rolls', () => {
       fc.assert(
         fc.property(
-          // Generate initial and updated pin states
-          fc.array(fc.constantFrom<PinState>('standing', 'knocked'), {
-            minLength: 10,
-            maxLength: 10,
-          }),
-          fc.array(fc.constantFrom<PinState>('standing', 'knocked'), {
-            minLength: 10,
-            maxLength: 10,
-          }),
+          // Generate valid initial and updated pin states
+          generateValidFirstRoll(),
+          generateValidFirstRoll(),
           fc.integer({ min: 0, max: 9 }),
           (initialPins, updatedPins, frameIndex) => {
             // Arrange: Create a new game and record initial roll
