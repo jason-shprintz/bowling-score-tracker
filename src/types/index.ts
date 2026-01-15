@@ -144,6 +144,7 @@ export interface GameEngineInterface {
   calculateTotalScore(): number;
   isGameComplete(): boolean;
   getCurrentSession(): GameSession | null;
+  validateGameState(): { isValid: boolean; errors: string[] };
 }
 
 export interface StatisticsEngineInterface {

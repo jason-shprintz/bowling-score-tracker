@@ -314,6 +314,275 @@ describe('GameEngine - Core Game State Management', () => {
     });
   });
 
+  describe('calculateFrameScore', () => {
+    beforeEach(() => {
+      engine.startNewGame('open');
+    });
+
+    it('should throw error when no active session', () => {
+      const newEngine = new GameEngine();
+      expect(() => {
+        newEngine.calculateFrameScore(0);
+      }).toThrow('No active game session');
+    });
+
+    it('should throw error for invalid frame index', () => {
+      expect(() => {
+        engine.calculateFrameScore(-1);
+      }).toThrow('Invalid frame index');
+
+      expect(() => {
+        engine.calculateFrameScore(10);
+      }).toThrow('Invalid frame index');
+    });
+
+    it('should return 0 for empty frame', () => {
+      expect(engine.calculateFrameScore(0)).toBe(0);
+    });
+
+    it('should calculate regular frame score', () => {
+      // First roll: 3 pins
+      const firstRoll: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 3; i++) {
+        firstRoll[i] = 'knocked';
+      }
+      engine.recordRoll(0, 0, firstRoll);
+
+      // Second roll: 4 pins
+      const secondRoll: PinState[] = Array(10).fill('standing');
+      for (let i = 3; i < 7; i++) {
+        secondRoll[i] = 'knocked';
+      }
+      engine.recordRoll(0, 1, secondRoll);
+
+      expect(engine.calculateFrameScore(0)).toBe(7);
+    });
+
+    it('should calculate strike score with bonus from next frame', () => {
+      // Frame 1: Strike
+      const strikeRoll: PinState[] = Array(10).fill('knocked');
+      engine.recordRoll(0, 0, strikeRoll);
+
+      // Frame 2: 3 + 4 = 7
+      const frame2Roll1: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 3; i++) {
+        frame2Roll1[i] = 'knocked';
+      }
+      engine.recordRoll(1, 0, frame2Roll1);
+
+      const frame2Roll2: PinState[] = Array(10).fill('standing');
+      for (let i = 3; i < 7; i++) {
+        frame2Roll2[i] = 'knocked';
+      }
+      engine.recordRoll(1, 1, frame2Roll2);
+
+      // Strike score = 10 + next two rolls (3 + 4) = 17
+      expect(engine.calculateFrameScore(0)).toBe(17);
+    });
+
+    it('should calculate spare score with bonus from next frame', () => {
+      // Frame 1: Spare (7 + 3)
+      const spareRoll1: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 7; i++) {
+        spareRoll1[i] = 'knocked';
+      }
+      engine.recordRoll(0, 0, spareRoll1);
+
+      const spareRoll2: PinState[] = Array(10).fill('standing');
+      for (let i = 7; i < 10; i++) {
+        spareRoll2[i] = 'knocked';
+      }
+      engine.recordRoll(0, 1, spareRoll2);
+
+      // Frame 2: First roll 5 pins
+      const frame2Roll1: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 5; i++) {
+        frame2Roll1[i] = 'knocked';
+      }
+      engine.recordRoll(1, 0, frame2Roll1);
+
+      // Spare score = 10 + next one roll (5) = 15
+      expect(engine.calculateFrameScore(0)).toBe(15);
+    });
+
+    it('should calculate strike followed by strike bonus correctly', () => {
+      // Frame 1: Strike
+      const strike1: PinState[] = Array(10).fill('knocked');
+      engine.recordRoll(0, 0, strike1);
+
+      // Frame 2: Strike
+      const strike2: PinState[] = Array(10).fill('knocked');
+      engine.recordRoll(1, 0, strike2);
+
+      // Frame 3: First roll 6 pins
+      const frame3Roll1: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 6; i++) {
+        frame3Roll1[i] = 'knocked';
+      }
+      engine.recordRoll(2, 0, frame3Roll1);
+
+      // Frame 1 score = 10 + 10 (strike) + 6 (first roll of frame 3) = 26
+      expect(engine.calculateFrameScore(0)).toBe(26);
+    });
+
+    it('should calculate frame 10 score correctly', () => {
+      // Frame 10: Strike, Strike, 7
+      const strike1: PinState[] = Array(10).fill('knocked');
+      engine.recordRoll(9, 0, strike1);
+
+      const strike2: PinState[] = Array(10).fill('knocked');
+      engine.recordRoll(9, 1, strike2);
+
+      const roll3: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 7; i++) {
+        roll3[i] = 'knocked';
+      }
+      engine.recordRoll(9, 2, roll3);
+
+      // Frame 10 score = 10 + 10 + 7 = 27
+      expect(engine.calculateFrameScore(9)).toBe(27);
+    });
+  });
+
+  describe('calculateTotalScore', () => {
+    beforeEach(() => {
+      engine.startNewGame('open');
+    });
+
+    it('should throw error when no active session', () => {
+      const newEngine = new GameEngine();
+      expect(() => {
+        newEngine.calculateTotalScore();
+      }).toThrow('No active game session');
+    });
+
+    it('should return 0 for empty game', () => {
+      expect(engine.calculateTotalScore()).toBe(0);
+    });
+
+    it('should calculate total score for perfect game', () => {
+      // Record 12 strikes (10 frames + 2 bonus rolls in frame 10)
+      for (let frame = 0; frame < 10; frame++) {
+        const strike: PinState[] = Array(10).fill('knocked');
+        engine.recordRoll(frame, 0, strike);
+
+        // Frame 10 gets 2 additional rolls
+        if (frame === 9) {
+          engine.recordRoll(frame, 1, strike);
+          engine.recordRoll(frame, 2, strike);
+        }
+      }
+
+      // Perfect game = 300
+      expect(engine.calculateTotalScore()).toBe(300);
+    });
+
+    it('should calculate total score for all spares with 5 pins each roll', () => {
+      // Record spares in frames 1-9 (5 + 5 each)
+      for (let frame = 0; frame < 9; frame++) {
+        const roll1: PinState[] = Array(10).fill('standing');
+        for (let i = 0; i < 5; i++) {
+          roll1[i] = 'knocked';
+        }
+        engine.recordRoll(frame, 0, roll1);
+
+        const roll2: PinState[] = Array(10).fill('standing');
+        for (let i = 5; i < 10; i++) {
+          roll2[i] = 'knocked';
+        }
+        engine.recordRoll(frame, 1, roll2);
+      }
+
+      // Frame 10: 5 + 5 + 5 (spare + bonus)
+      const frame10Roll1: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 5; i++) {
+        frame10Roll1[i] = 'knocked';
+      }
+      engine.recordRoll(9, 0, frame10Roll1);
+
+      const frame10Roll2: PinState[] = Array(10).fill('standing');
+      for (let i = 5; i < 10; i++) {
+        frame10Roll2[i] = 'knocked';
+      }
+      engine.recordRoll(9, 1, frame10Roll2);
+
+      const frame10Roll3: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 5; i++) {
+        frame10Roll3[i] = 'knocked';
+      }
+      engine.recordRoll(9, 2, frame10Roll3);
+
+      // Each spare frame = 10 + 5 (next roll) = 15
+      // 9 frames × 15 = 135
+      // Frame 10 = 5 + 5 + 5 = 15
+      // Total = 135 + 15 = 150
+      expect(engine.calculateTotalScore()).toBe(150);
+    });
+  });
+
+  describe('validateGameState', () => {
+    beforeEach(() => {
+      engine.startNewGame('open');
+    });
+
+    it('should return invalid when no active session', () => {
+      const newEngine = new GameEngine();
+      const result = newEngine.validateGameState();
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('No active game session');
+    });
+
+    it('should return valid for empty game', () => {
+      const result = engine.validateGameState();
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should return valid for normal game', () => {
+      // Record a normal frame
+      const roll1: PinState[] = Array(10).fill('standing');
+      for (let i = 0; i < 3; i++) {
+        roll1[i] = 'knocked';
+      }
+      engine.recordRoll(0, 0, roll1);
+
+      const roll2: PinState[] = Array(10).fill('standing');
+      for (let i = 3; i < 7; i++) {
+        roll2[i] = 'knocked';
+      }
+      engine.recordRoll(0, 1, roll2);
+
+      const result = engine.validateGameState();
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should detect invalid pin count in regular frame', () => {
+      // Manually create invalid state (this would normally be prevented by recordRoll)
+      const session = engine.getCurrentSession()!;
+      session.frames[0].rolls = [
+        { pins: Array(10).fill('standing'), pinsKnocked: -1 },
+      ];
+
+      const result = engine.validateGameState();
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('Frame 1, roll 1: Invalid pin count -1');
+    });
+
+    it('should detect too many pins in regular frame', () => {
+      // Manually create invalid state
+      const session = engine.getCurrentSession()!;
+      session.frames[0].rolls = [
+        { pins: Array(10).fill('standing'), pinsKnocked: 5 },
+        { pins: Array(10).fill('standing'), pinsKnocked: 8 },
+      ];
+
+      const result = engine.validateGameState();
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('Frame 1: Total pins 13 exceeds 10');
+    });
+  });
+
   describe('isGameComplete', () => {
     beforeEach(() => {
       engine.startNewGame('open');
