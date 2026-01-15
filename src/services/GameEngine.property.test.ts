@@ -88,8 +88,8 @@ describe('GameEngine - Property-Based Tests', () => {
             // Assert: All spares should score correctly
             const totalScore = engine.calculateTotalScore();
 
-            // Each of first 9 frames: 10 + firstRollPins = 10 + firstRollPins
-            // Frame 10: firstRollPins + (10-firstRollPins) + firstRollPins = 10 + firstRollPins
+            // Each of the first 9 frames is a spare: base 10 pins + bonus from next first roll (firstRollPins)
+            // Frame 10 has rolls: firstRollPins + (10 - firstRollPins) + bonus firstRollPins = 10 + firstRollPins
             const expectedTotal =
               9 * (10 + firstRollPins) + (10 + firstRollPins);
             expect(totalScore).toBe(expectedTotal);
