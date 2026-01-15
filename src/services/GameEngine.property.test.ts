@@ -179,6 +179,7 @@ function generateValidFirstRoll(): fc.Arbitrary<PinState[]> {
 
 /**
  * Generates physically valid second roll given first roll
+ * Uses a curated set of common valid combinations to avoid exponential complexity
  */
 function generateValidSecondRoll(firstRoll: PinState[]): fc.Arbitrary<PinState[]> {
   const pinPhysics = new PinPhysics();
@@ -186,11 +187,10 @@ function generateValidSecondRoll(firstRoll: PinState[]): fc.Arbitrary<PinState[]
   // Generate a list of valid second roll combinations
   const validCombinations: PinState[][] = [];
   
-  // Option 1: No additional pins knocked
+  // Always include: No additional pins knocked
   validCombinations.push(Array(10).fill('standing') as PinState[]);
   
-  // Option 2: Try to knock remaining pins in valid ways
-  // Generate all possible combinations of remaining standing pins
+  // Get standing pins
   const standingPins: number[] = [];
   firstRoll.forEach((state, index) => {
     if (state === 'standing') {
@@ -198,23 +198,55 @@ function generateValidSecondRoll(firstRoll: PinState[]): fc.Arbitrary<PinState[]
     }
   });
   
-  // Try various combinations of knocking down remaining pins
-  for (let i = 0; i < Math.pow(2, standingPins.length); i++) {
-    const secondRoll: PinState[] = Array(10).fill('standing') as PinState[];
-    
-    // Convert number to binary to represent which pins to knock
-    for (let j = 0; j < standingPins.length; j++) {
-      if ((i & (1 << j)) !== 0) {
-        secondRoll[standingPins[j] - 1] = 'knocked';
+  // If 10 or fewer standing pins, we can afford to check all combinations
+  // Otherwise, use a more selective strategy
+  if (standingPins.length <= 6) {
+    // Check all combinations for small sets
+    for (let i = 1; i < Math.pow(2, standingPins.length); i++) {
+      const secondRoll: PinState[] = Array(10).fill('standing') as PinState[];
+      
+      // Convert number to binary to represent which pins to knock
+      for (let j = 0; j < standingPins.length; j++) {
+        if ((i & (1 << j)) !== 0) {
+          secondRoll[standingPins[j] - 1] = 'knocked';
+        }
+      }
+      
+      // Validate this combination
+      const firstRollObj = { pins: firstRoll, pinsKnocked: firstRoll.filter(p => p === 'knocked').length };
+      const result = pinPhysics.validatePinCombination(secondRoll, firstRollObj);
+      
+      if (result.isValid) {
+        validCombinations.push(secondRoll);
       }
     }
+  } else {
+    // For larger sets, try common patterns
+    const patternsToTry: number[][] = [
+      // Try knocking all remaining pins (spare)
+      standingPins,
+      // Try knocking individual pins
+      ...standingPins.map(pin => [pin]),
+      // Try knocking pairs (sample first few)
+      ...standingPins.slice(0, 3).flatMap((p1, i) => 
+        standingPins.slice(i + 1, i + 4).map(p2 => [p1, p2])
+      ),
+    ];
     
-    // Validate this combination
-    const firstRollObj = { pins: firstRoll, pinsKnocked: firstRoll.filter(p => p === 'knocked').length };
-    const result = pinPhysics.validatePinCombination(secondRoll, firstRollObj);
-    
-    if (result.isValid) {
-      validCombinations.push(secondRoll);
+    for (const pinsToKnock of patternsToTry) {
+      const secondRoll: PinState[] = Array(10).fill('standing') as PinState[];
+      
+      for (const pinNum of pinsToKnock) {
+        secondRoll[pinNum - 1] = 'knocked';
+      }
+      
+      // Validate this combination
+      const firstRollObj = { pins: firstRoll, pinsKnocked: firstRoll.filter(p => p === 'knocked').length };
+      const result = pinPhysics.validatePinCombination(secondRoll, firstRollObj);
+      
+      if (result.isValid) {
+        validCombinations.push(secondRoll);
+      }
     }
   }
   
