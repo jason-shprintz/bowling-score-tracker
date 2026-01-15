@@ -167,18 +167,18 @@ describe('GameEngine - Property-Based Tests', () => {
     it('should calculate regular frame scores correctly', () => {
       fc.assert(
         fc.property(
-          fc.integer({ min: 0, max: 9 }), // First roll pins
-          fc.integer({ min: 0, max: 9 }), // Second roll pins (will be constrained)
-          (firstRollPins, secondRollPinsRaw) => {
-            // Constrain second roll so total doesn't exceed 10
-            const maxSecondRoll = 10 - firstRollPins;
-            const secondRollPins = Math.min(secondRollPinsRaw, maxSecondRoll);
-
-            // Skip strikes and spares for this test
-            if (firstRollPins === 10 || firstRollPins + secondRollPins === 10) {
-              return;
-            }
-
+          // Generate only non-strike, non-spare regular frame combinations
+          fc
+            .integer({ min: 0, max: 9 })
+            .chain(firstRollPins =>
+              fc
+                .tuple(
+                  fc.constant(firstRollPins),
+                  fc.integer({ min: 0, max: 9 - firstRollPins })
+                )
+            )
+            .filter(([firstRollPins, secondRollPins]) => firstRollPins + secondRollPins < 10),
+          ([firstRollPins, secondRollPins]) => {
             // Arrange: Create a new game
             const engine = new GameEngine();
             engine.startNewGame('open');
