@@ -430,9 +430,11 @@ describe('GameEngine - Core Game State Management', () => {
       const strike1: PinState[] = Array(10).fill('knocked');
       engine.recordRoll(9, 0, strike1);
 
+      // After strike, pins reset - second strike
       const strike2: PinState[] = Array(10).fill('knocked');
       engine.recordRoll(9, 1, strike2);
 
+      // After second strike, pins reset - knock down 7 pins
       const roll3: PinState[] = Array(10).fill('standing');
       for (let i = 0; i < 7; i++) {
         roll3[i] = 'knocked';

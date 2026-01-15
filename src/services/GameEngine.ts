@@ -9,10 +9,17 @@ import {
   PinState,
   Frame,
   Roll,
+  ValidationResult,
 } from '@/types';
+import { PinPhysics } from './PinPhysics';
 
 export class GameEngine implements GameEngineInterface {
   private currentSession: GameSession | null = null;
+  private pinPhysics: PinPhysics;
+
+  constructor() {
+    this.pinPhysics = new PinPhysics();
+  }
 
   /**
    * Starts a new bowling game session
@@ -45,6 +52,7 @@ export class GameEngine implements GameEngineInterface {
   /**
    * Records a roll in the specified frame
    * Updates pin states and calculates pins knocked down
+   * Validates pin physics before recording
    */
   recordRoll(frameIndex: number, rollIndex: number, pins: PinState[]): void {
     if (!this.currentSession) {
@@ -64,6 +72,20 @@ export class GameEngine implements GameEngineInterface {
     }
 
     const frame = this.currentSession.frames[frameIndex];
+
+    // Get previous roll for physics validation
+    // In frame 10, after a strike or spare, pins are reset
+    const previousRoll = this.getPreviousRollForValidation(frameIndex, rollIndex, frame);
+
+    // Validate pin physics
+    const physicsValidation = this.pinPhysics.validatePinCombination(
+      pins,
+      previousRoll
+    );
+    if (!physicsValidation.isValid) {
+      const errorMessage = `Invalid pin combination: ${physicsValidation.errors.join(', ')}`;
+      throw new Error(errorMessage);
+    }
 
     // Count knocked pins
     const pinsKnocked = pins.filter((pin) => pin === 'knocked').length;
@@ -479,6 +501,59 @@ export class GameEngine implements GameEngineInterface {
    */
   getCurrentSession(): GameSession | null {
     return this.currentSession;
+  }
+
+  /**
+   * Validates pin combination for physics compliance
+   * Useful for UI components to check pin selections before recording
+   */
+  validatePinPhysics(
+    pins: PinState[],
+    frameIndex: number,
+    rollIndex: number
+  ): ValidationResult {
+    if (!this.currentSession) {
+      throw new Error('No active game session');
+    }
+
+    if (frameIndex < 0 || frameIndex >= 10) {
+      throw new Error('Invalid frame index');
+    }
+
+    const frame = this.currentSession.frames[frameIndex];
+    const previousRoll = this.getPreviousRollForValidation(frameIndex, rollIndex, frame);
+
+    return this.pinPhysics.validatePinCombination(pins, previousRoll);
+  }
+
+  /**
+   * Gets the previous roll for validation, applying frame 10 special rules
+   * In frame 10, pins are reset after strikes and spares
+   */
+  private getPreviousRollForValidation(
+    frameIndex: number,
+    rollIndex: number,
+    frame: Frame
+  ): Roll | undefined {
+    let previousRoll = rollIndex > 0 ? frame.rolls[rollIndex - 1] : undefined;
+
+    // Frame 10 special rules: pins reset after strikes and spares
+    if (frameIndex === 9 && previousRoll) {
+      // If previous roll was a strike, pins are reset
+      if (previousRoll.pinsKnocked === 10) {
+        previousRoll = undefined;
+      }
+      // If we're on the third roll and first two rolls made a spare, pins are reset
+      else if (rollIndex === 2 && frame.rolls.length >= 2) {
+        const firstRoll = frame.rolls[0];
+        const secondRoll = frame.rolls[1];
+        if (firstRoll.pinsKnocked + secondRoll.pinsKnocked === 10) {
+          previousRoll = undefined;
+        }
+      }
+    }
+
+    return previousRoll;
   }
 
   /**
