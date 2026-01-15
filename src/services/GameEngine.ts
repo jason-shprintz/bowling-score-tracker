@@ -241,13 +241,12 @@ export class GameEngine implements GameEngineInterface {
     if (firstNextRoll.pinsKnocked === 10) {
       let bonus = 10;
 
-      // If we're at frame 8 (index 7), next frame is 9 (index 8)
-      // Need to get second roll from frame 9 or frame 10
+      // If we're at frame 9 (index 8), the next frame is frame 10
+      // The two bonus rolls both come from frame 10
       if (frameIndex === 8) {
-        // Next frame is frame 9, look at frame 10 for second bonus roll
-        const frame10 = this.currentSession!.frames[9];
-        if (frame10.rolls.length > 0) {
-          bonus += frame10.rolls[0].pinsKnocked;
+        // Use the second roll from frame 10 as the second bonus roll
+        if (nextFrame.rolls.length > 1) {
+          bonus += nextFrame.rolls[1].pinsKnocked;
         }
       } else {
         // Look at frame after next for second roll
