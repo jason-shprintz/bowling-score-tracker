@@ -177,18 +177,16 @@ function generateValidFirstRoll(): fc.Arbitrary<PinState[]> {
   );
 }
 
+// Shared PinPhysics instance to avoid repeated instantiation overhead during test generation
+const sharedPinPhysics = new PinPhysics();
+
 /**
  * Generates physically valid second roll given first roll
  * Uses a curated set of common valid combinations to avoid exponential complexity
  */
 function generateValidSecondRoll(firstRoll: PinState[]): fc.Arbitrary<PinState[]> {
-  const pinPhysics = new PinPhysics();
-  
   // Generate a list of valid second roll combinations
   const validCombinations: PinState[][] = [];
-  
-  // Always include: No additional pins knocked
-  validCombinations.push(Array(10).fill('standing') as PinState[]);
   
   // Get standing pins
   const standingPins: number[] = [];
@@ -198,9 +196,15 @@ function generateValidSecondRoll(firstRoll: PinState[]): fc.Arbitrary<PinState[]
     }
   });
   
-  // If 10 or fewer standing pins, we can afford to check all combinations
-  // Otherwise, use a more selective strategy
-  if (standingPins.length <= 6) {
+  // Only add 'no additional pins knocked' if there are standing pins remaining
+  if (standingPins.length > 0) {
+    validCombinations.push(Array(10).fill('standing') as PinState[]);
+  }
+  
+  // If 6 or fewer standing pins, we can afford to check all combinations.
+  // 2^6 = 64 possible subsets keeps the O(2^n) enumeration small enough for tests;
+  // for larger n we fall back to a curated set of common patterns to avoid explosion.
+  if (standingPins.length > 0 && standingPins.length <= 6) {
     // Check all combinations for small sets
     for (let i = 1; i < Math.pow(2, standingPins.length); i++) {
       const secondRoll: PinState[] = Array(10).fill('standing') as PinState[];
@@ -214,7 +218,7 @@ function generateValidSecondRoll(firstRoll: PinState[]): fc.Arbitrary<PinState[]
       
       // Validate this combination
       const firstRollObj = { pins: firstRoll, pinsKnocked: firstRoll.filter(p => p === 'knocked').length };
-      const result = pinPhysics.validatePinCombination(secondRoll, firstRollObj);
+      const result = sharedPinPhysics.validatePinCombination(secondRoll, firstRollObj);
       
       if (result.isValid) {
         validCombinations.push(secondRoll);
@@ -242,7 +246,7 @@ function generateValidSecondRoll(firstRoll: PinState[]): fc.Arbitrary<PinState[]
       
       // Validate this combination
       const firstRollObj = { pins: firstRoll, pinsKnocked: firstRoll.filter(p => p === 'knocked').length };
-      const result = pinPhysics.validatePinCombination(secondRoll, firstRollObj);
+      const result = sharedPinPhysics.validatePinCombination(secondRoll, firstRollObj);
       
       if (result.isValid) {
         validCombinations.push(secondRoll);
