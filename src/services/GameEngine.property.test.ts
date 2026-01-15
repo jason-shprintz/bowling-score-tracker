@@ -547,8 +547,12 @@ describe('GameEngine - Property-Based Tests', () => {
     it('should calculate strike bonus correctly across multiple frames', () => {
       fc.assert(
         fc.property(
-          generateValidFirstRoll(), // Next frame first roll
-          (nextFirstRoll) => {
+          fc.tuple(
+            generateValidFirstRoll(), // Next frame first roll
+            generateValidFirstRoll(), // Third frame roll (used if next frame is strike)
+            generateValidFirstRoll()  // Alternative for second roll (we'll validate it)
+          ),
+          ([nextFirstRoll, thirdFrameRoll, potentialSecondRoll]) => {
             // Arrange: Create a new game
             const engine = new GameEngine();
             engine.startNewGame('open');
@@ -565,24 +569,25 @@ describe('GameEngine - Property-Based Tests', () => {
               engine.recordRoll(1, 0, strike);
 
               // Need a third frame for complete bonus calculation
-              const thirdFrameRoll = generateValidFirstRoll();
-              const sample = fc.sample(thirdFrameRoll, 1)[0];
-              engine.recordRoll(2, 0, sample);
+              engine.recordRoll(2, 0, thirdFrameRoll);
 
-              const thirdRollPins = sample.filter(p => p === 'knocked').length;
+              const thirdRollPins = thirdFrameRoll.filter(p => p === 'knocked').length;
 
               // Assert: Strike + Strike + thirdRollPins
               const frameScore = engine.calculateFrameScore(0);
               expect(frameScore).toBe(10 + 10 + thirdRollPins);
             } else {
-              // Next frame is not a strike - generate valid second roll
-              const nextSecondRoll = generateValidSecondRoll(nextFirstRoll);
-              const sample = fc.sample(nextSecondRoll, 1)[0];
-
-              const nextSecondRollPins = sample.filter(p => p === 'knocked').length;
+              // Next frame is not a strike - need valid second roll
+              // Validate that potentialSecondRoll is valid for nextFirstRoll
+              const firstRollObj = { pins: nextFirstRoll, pinsKnocked: nextFirstRollPins };
+              const validation = sharedPinPhysics.validatePinCombination(potentialSecondRoll, firstRollObj);
+              
+              fc.pre(validation.isValid); // Skip this iteration if not valid
+              
+              const nextSecondRollPins = potentialSecondRoll.filter(p => p === 'knocked').length;
 
               engine.recordRoll(1, 0, nextFirstRoll);
-              engine.recordRoll(1, 1, sample);
+              engine.recordRoll(1, 1, potentialSecondRoll);
 
               // Assert: Strike + nextFirstRollPins + nextSecondRollPins
               const frameScore = engine.calculateFrameScore(0);
@@ -638,8 +643,12 @@ describe('GameEngine - Property-Based Tests', () => {
     it('should handle 10th frame scoring correctly', () => {
       fc.assert(
         fc.property(
-          generateValidFirstRoll(), // First roll
-          (firstRoll) => {
+          fc.tuple(
+            generateValidFirstRoll(), // First roll
+            generateValidFirstRoll(), // Second roll (could be first roll if strike, or second roll if not)
+            generateValidFirstRoll()  // Third roll if needed
+          ),
+          ([firstRoll, secondRollCandidate, thirdRollCandidate]) => {
             // Arrange: Create a new game
             const engine = new GameEngine();
             engine.startNewGame('open');
@@ -652,37 +661,43 @@ describe('GameEngine - Property-Based Tests', () => {
 
             if (roll1Pins === 10) {
               // Strike in 10th frame - need 2 more rolls
-              const secondRoll = fc.sample(generateValidFirstRoll(), 1)[0];
-              engine.recordRoll(9, 1, secondRoll);
+              engine.recordRoll(9, 1, secondRollCandidate);
               
-              const roll2Pins = secondRoll.filter(p => p === 'knocked').length;
+              const roll2Pins = secondRollCandidate.filter(p => p === 'knocked').length;
               expectedScore += roll2Pins;
 
-              // Third roll - if second was not a strike, generate valid second roll
-              let thirdRoll: PinState[];
+              // Third roll - validate it's appropriate for the second roll
               if (roll2Pins === 10) {
-                thirdRoll = fc.sample(generateValidFirstRoll(), 1)[0];
+                // Second was also a strike, third can be any valid first roll
+                engine.recordRoll(9, 2, thirdRollCandidate);
+                const roll3Pins = thirdRollCandidate.filter(p => p === 'knocked').length;
+                expectedScore += roll3Pins;
               } else {
-                thirdRoll = fc.sample(generateValidSecondRoll(secondRoll), 1)[0];
+                // Second was not a strike, third must be valid second roll
+                const secondRollObj = { pins: secondRollCandidate, pinsKnocked: roll2Pins };
+                const validation = sharedPinPhysics.validatePinCombination(thirdRollCandidate, secondRollObj);
+                fc.pre(validation.isValid); // Skip if not valid
+                
+                engine.recordRoll(9, 2, thirdRollCandidate);
+                const roll3Pins = thirdRollCandidate.filter(p => p === 'knocked').length;
+                expectedScore += roll3Pins;
               }
-              engine.recordRoll(9, 2, thirdRoll);
-              
-              const roll3Pins = thirdRoll.filter(p => p === 'knocked').length;
-              expectedScore += roll3Pins;
             } else {
-              // Not a strike - generate valid second roll
-              const secondRoll = fc.sample(generateValidSecondRoll(firstRoll), 1)[0];
-              engine.recordRoll(9, 1, secondRoll);
+              // Not a strike - validate second roll
+              const firstRollObj = { pins: firstRoll, pinsKnocked: roll1Pins };
+              const validation = sharedPinPhysics.validatePinCombination(secondRollCandidate, firstRollObj);
+              fc.pre(validation.isValid); // Skip if not valid
               
-              const roll2Pins = secondRoll.filter(p => p === 'knocked').length;
+              engine.recordRoll(9, 1, secondRollCandidate);
+              
+              const roll2Pins = secondRollCandidate.filter(p => p === 'knocked').length;
               expectedScore += roll2Pins;
 
               if (roll1Pins + roll2Pins === 10) {
                 // Spare - need third roll
-                const thirdRoll = fc.sample(generateValidFirstRoll(), 1)[0];
-                engine.recordRoll(9, 2, thirdRoll);
+                engine.recordRoll(9, 2, thirdRollCandidate);
                 
-                const roll3Pins = thirdRoll.filter(p => p === 'knocked').length;
+                const roll3Pins = thirdRollCandidate.filter(p => p === 'knocked').length;
                 expectedScore += roll3Pins;
               }
             }
@@ -754,10 +769,13 @@ describe('GameEngine - Property-Based Tests', () => {
     it('should maintain pin state consistency across multiple rolls in a frame', () => {
       fc.assert(
         fc.property(
-          // Generate valid first roll
-          generateValidFirstRoll(),
-          fc.integer({ min: 0, max: 9 }),
-          (firstPins, frameIndex) => {
+          // Generate valid first roll and candidate second roll
+          fc.tuple(
+            generateValidFirstRoll(),
+            generateValidFirstRoll(), // Candidate for second roll
+            fc.integer({ min: 0, max: 9 })
+          ),
+          ([firstPins, secondPinsCandidate, frameIndex]) => {
             // Arrange: Create a new game
             const engine = new GameEngine();
             engine.startNewGame('open');
@@ -765,9 +783,13 @@ describe('GameEngine - Property-Based Tests', () => {
             // Act: Record two rolls with valid physics
             engine.recordRoll(frameIndex, 0, firstPins);
             
-            // Generate valid second roll based on first roll
-            const secondPins = fc.sample(generateValidSecondRoll(firstPins), 1)[0];
-            engine.recordRoll(frameIndex, 1, secondPins);
+            // Validate second roll is valid for first roll
+            const firstRollPins = firstPins.filter(p => p === 'knocked').length;
+            const firstRollObj = { pins: firstPins, pinsKnocked: firstRollPins };
+            const validation = sharedPinPhysics.validatePinCombination(secondPinsCandidate, firstRollObj);
+            fc.pre(validation.isValid); // Skip if not valid
+            
+            engine.recordRoll(frameIndex, 1, secondPinsCandidate);
 
             // Assert: Verify both rolls maintain pin state consistency
             const session = engine.getCurrentSession();
@@ -786,8 +808,8 @@ describe('GameEngine - Property-Based Tests', () => {
 
             // Check second roll
             const secondRoll = frame.rolls[1];
-            expect(secondRoll.pins).toEqual(secondPins);
-            const expectedSecondKnockedCount = secondPins.filter(
+            expect(secondRoll.pins).toEqual(secondPinsCandidate);
+            const expectedSecondKnockedCount = secondPinsCandidate.filter(
               (pin) => pin === 'knocked'
             ).length;
             expect(secondRoll.pinsKnocked).toBe(expectedSecondKnockedCount);
@@ -800,17 +822,20 @@ describe('GameEngine - Property-Based Tests', () => {
     it('should maintain pin state consistency when updating existing rolls', () => {
       fc.assert(
         fc.property(
-          // Generate valid initial and updated pin states
-          generateValidFirstRoll(),
-          generateValidFirstRoll(),
-          fc.integer({ min: 0, max: 9 }),
-          (initialPins, updatedPins, frameIndex) => {
+          // Generate two valid pin states to test roll updates
+          // This tests that the game engine correctly handles roll corrections/updates
+          fc.tuple(
+            generateValidFirstRoll(), // Initial pin selection
+            generateValidFirstRoll(), // Updated pin selection
+            fc.integer({ min: 0, max: 9 })
+          ),
+          ([initialPins, updatedPins, frameIndex]) => {
             // Arrange: Create a new game and record initial roll
             const engine = new GameEngine();
             engine.startNewGame('open');
             engine.recordRoll(frameIndex, 0, initialPins);
 
-            // Act: Update the roll with new pin states
+            // Act: Update the roll with new pin states (simulating user correction)
             engine.recordRoll(frameIndex, 0, updatedPins);
 
             // Assert: Verify updated pin state consistency
