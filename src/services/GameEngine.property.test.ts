@@ -197,11 +197,12 @@ function generateValidSecondRoll(firstRoll: PinState[]): fc.Arbitrary<PinState[]
   });
   
   // Only add 'no additional pins knocked' if there are standing pins remaining
+  // (if firstRoll was a strike, there are no standing pins to knock)
   if (standingPins.length > 0) {
     validCombinations.push(Array(10).fill('standing') as PinState[]);
   }
   
-  // If 6 or fewer standing pins, we can afford to check all combinations.
+  // If 6 or fewer standing pins (excluding strikes with 0 standing), check all combinations.
   // 2^6 = 64 possible subsets keeps the O(2^n) enumeration small enough for tests;
   // for larger n we fall back to a curated set of common patterns to avoid explosion.
   if (standingPins.length > 0 && standingPins.length <= 6) {
