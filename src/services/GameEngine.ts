@@ -75,23 +75,7 @@ export class GameEngine implements GameEngineInterface {
 
     // Get previous roll for physics validation
     // In frame 10, after a strike or spare, pins are reset
-    let previousRoll = rollIndex > 0 ? frame.rolls[rollIndex - 1] : undefined;
-
-    // Frame 10 special rules: pins reset after strikes and spares
-    if (frameIndex === 9 && previousRoll) {
-      // If previous roll was a strike, pins are reset
-      if (previousRoll.pinsKnocked === 10) {
-        previousRoll = undefined;
-      }
-      // If we're on the third roll and first two rolls made a spare, pins are reset
-      else if (rollIndex === 2 && frame.rolls.length >= 2) {
-        const firstRoll = frame.rolls[0];
-        const secondRoll = frame.rolls[1];
-        if (firstRoll.pinsKnocked + secondRoll.pinsKnocked === 10) {
-          previousRoll = undefined;
-        }
-      }
-    }
+    const previousRoll = this.getPreviousRollForValidation(frameIndex, rollIndex, frame);
 
     // Validate pin physics
     const physicsValidation = this.pinPhysics.validatePinCombination(
@@ -537,6 +521,20 @@ export class GameEngine implements GameEngineInterface {
     }
 
     const frame = this.currentSession.frames[frameIndex];
+    const previousRoll = this.getPreviousRollForValidation(frameIndex, rollIndex, frame);
+
+    return this.pinPhysics.validatePinCombination(pins, previousRoll);
+  }
+
+  /**
+   * Gets the previous roll for validation, applying frame 10 special rules
+   * In frame 10, pins are reset after strikes and spares
+   */
+  private getPreviousRollForValidation(
+    frameIndex: number,
+    rollIndex: number,
+    frame: Frame
+  ): Roll | undefined {
     let previousRoll = rollIndex > 0 ? frame.rolls[rollIndex - 1] : undefined;
 
     // Frame 10 special rules: pins reset after strikes and spares
@@ -555,7 +553,7 @@ export class GameEngine implements GameEngineInterface {
       }
     }
 
-    return this.pinPhysics.validatePinCombination(pins, previousRoll);
+    return previousRoll;
   }
 
   /**
