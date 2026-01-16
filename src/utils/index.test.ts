@@ -6,7 +6,7 @@ import {
   createStandingPins,
   calculatePercentage,
 } from './index';
-import { PinState } from '@/types';
+import { PinState } from '../types';
 
 describe('Utility Functions', () => {
   describe('generateId', () => {

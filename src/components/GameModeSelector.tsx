@@ -1,9 +1,9 @@
 // Game Mode Selector Component - League vs Open bowling selection
 // This will be implemented in task 8.1
 
-import React from "react";
-import { View, Text } from "react-native";
-import { GameMode, League } from "@/types";
+import React from 'react';
+import { View, Text } from 'react-native';
+import { GameMode, League } from '../types';
 
 interface GameModeSelectorProps {
   onModeSelect: (mode: GameMode, league?: League) => void;

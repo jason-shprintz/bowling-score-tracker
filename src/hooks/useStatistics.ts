@@ -2,7 +2,7 @@
 // This will be implemented in task 5.1
 
 import { useState, useEffect } from 'react';
-import { BowlingStats, GameSession } from '@/types';
+import { BowlingStats, GameSession } from '../types';
 
 export const useStatistics = (games: GameSession[]) => {
   const [stats, _setStats] = useState<BowlingStats | null>(null);

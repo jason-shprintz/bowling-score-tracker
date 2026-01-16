@@ -1,7 +1,7 @@
 // Utility functions for the Bowling Score Tracker
 
-import { PinState, Roll } from "@/types";
-import { BOWLING_CONSTANTS } from "./constants";
+import { PinState, Roll } from '../types';
+import { BOWLING_CONSTANTS } from './constants';
 
 /**
  * Generates a unique ID using timestamp and random number
@@ -15,16 +15,16 @@ export const generateId = (): string => {
  */
 export const isValidPinSelection = (
   pins: PinState[],
-  previousRoll?: Roll,
+  previousRoll?: Roll
 ): boolean => {
   const knockedPins = pins
-    .map((pin, index) => (pin === "knocked" ? index + 1 : null))
+    .map((pin, index) => (pin === 'knocked' ? index + 1 : null))
     .filter(Boolean) as number[];
 
   // If this is the second roll, check that we're not knocking down already knocked pins
   if (previousRoll) {
     const previouslyKnocked = previousRoll.pins
-      .map((pin, index) => (pin === "knocked" ? index + 1 : null))
+      .map((pin, index) => (pin === 'knocked' ? index + 1 : null))
       .filter(Boolean) as number[];
     const overlap = knockedPins.some((pin) => previouslyKnocked.includes(pin));
     if (overlap) return false;
@@ -39,24 +39,24 @@ export const isValidPinSelection = (
  * Counts the number of knocked pins
  */
 export const countKnockedPins = (pins: PinState[]): number => {
-  return pins.filter((pin) => pin === "knocked").length;
+  return pins.filter((pin) => pin === 'knocked').length;
 };
 
 /**
  * Creates an array of standing pins
  */
 export const createStandingPins = (): PinState[] => {
-  return new Array(BOWLING_CONSTANTS.TOTAL_PINS).fill("standing") as PinState[];
+  return new Array(BOWLING_CONSTANTS.TOTAL_PINS).fill('standing') as PinState[];
 };
 
 /**
  * Formats a date to a readable string
  */
 export const formatDate = (date: Date): string => {
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   });
 };
 
@@ -64,12 +64,12 @@ export const formatDate = (date: Date): string => {
  * Formats a date and time to a readable string
  */
 export const formatDateTime = (date: Date): string => {
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
   });
 };
 

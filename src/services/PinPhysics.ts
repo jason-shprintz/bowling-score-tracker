@@ -1,7 +1,7 @@
 // Pin Physics Validation Service
 // Implements physically possible pin combination checking for bowling
 
-import { PinState, Roll, ValidationResult } from '@/types';
+import { PinState, Roll, ValidationResult } from '../types';
 
 /**
  * Pin layout in standard 10-pin bowling:

@@ -1,9 +1,9 @@
 // Pin Selector Component - Interactive pin layout
 // This will be implemented in task 8.2
 
-import React from "react";
-import { View, Text } from "react-native";
-import { PinSelectorProps } from "@/types";
+import React from 'react';
+import { View, Text } from 'react-native';
+import { PinSelectorProps } from '../types';
 
 export const PinSelector: React.FC<PinSelectorProps> = ({
   pins,

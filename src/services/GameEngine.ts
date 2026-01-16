@@ -10,7 +10,7 @@ import {
   Frame,
   Roll,
   ValidationResult,
-} from '@/types';
+} from '../types';
 import { PinPhysics } from './PinPhysics';
 
 export class GameEngine implements GameEngineInterface {
@@ -75,7 +75,11 @@ export class GameEngine implements GameEngineInterface {
 
     // Get previous roll for physics validation
     // In frame 10, after a strike or spare, pins are reset
-    const previousRoll = this.getPreviousRollForValidation(frameIndex, rollIndex, frame);
+    const previousRoll = this.getPreviousRollForValidation(
+      frameIndex,
+      rollIndex,
+      frame
+    );
 
     // Validate pin physics
     const physicsValidation = this.pinPhysics.validatePinCombination(
@@ -521,7 +525,11 @@ export class GameEngine implements GameEngineInterface {
     }
 
     const frame = this.currentSession.frames[frameIndex];
-    const previousRoll = this.getPreviousRollForValidation(frameIndex, rollIndex, frame);
+    const previousRoll = this.getPreviousRollForValidation(
+      frameIndex,
+      rollIndex,
+      frame
+    );
 
     return this.pinPhysics.validatePinCombination(pins, previousRoll);
   }

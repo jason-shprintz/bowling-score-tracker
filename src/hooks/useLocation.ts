@@ -2,7 +2,7 @@
 // This will be implemented in task 6.1
 
 import { useState, useEffect } from 'react';
-import { Location, BowlingAlley } from '@/types';
+import { Location, BowlingAlley } from '../types';
 
 export const useLocation = () => {
   const [location, _setLocation] = useState<Location | null>(null);
