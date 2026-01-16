@@ -619,22 +619,37 @@ export class DataService {
         team_name: string | null;
         bowling_night: string;
         alley_id: string;
-      }>('SELECT * FROM leagues ORDER BY name');
+        alley_name: string;
+      }>(
+        `SELECT
+           l.id,
+           l.name,
+           l.season,
+           l.team_name,
+           l.bowling_night,
+           l.alley_id,
+           a.name AS alley_name
+         FROM leagues l
+         JOIN bowling_alleys a ON a.id = l.alley_id
+         ORDER BY l.name`
+      );
 
       const leagues: League[] = [];
 
       for (const row of rows) {
-        const alley = await this.getVenueById(row.alley_id);
-        if (alley) {
-          leagues.push({
-            id: row.id,
-            name: row.name,
-            season: row.season,
-            teamName: row.team_name || undefined,
-            bowlingNight: row.bowling_night,
-            alley,
-          });
-        }
+        const alley: BowlingAlley = {
+          id: row.alley_id,
+          name: row.alley_name,
+        } as BowlingAlley;
+
+        leagues.push({
+          id: row.id,
+          name: row.name,
+          season: row.season,
+          teamName: row.team_name || undefined,
+          bowlingNight: row.bowling_night,
+          alley,
+        });
       }
 
       return leagues;
