@@ -21,13 +21,57 @@ const STORAGE_KEYS = {
 /**
  * DataService handles local data persistence using AsyncStorage for simple data
  * and SQLite for complex queries and relational data.
+ * Implements singleton pattern to ensure only one database connection exists.
  */
 export class DataService {
+  private static instance: DataService | null = null;
   private db: SQLite.SQLiteDatabase | null = null;
+  private initializationPromise: Promise<void> | null = null;
+
+  /**
+   * Private constructor to enforce singleton pattern
+   */
+  private constructor() {}
+
+  /**
+   * Get the singleton instance of DataService
+   */
+  public static getInstance(): DataService {
+    if (!DataService.instance) {
+      DataService.instance = new DataService();
+    }
+    return DataService.instance;
+  }
+
   /**
    * Initialize the SQLite database and create tables if they don't exist
+   * Guards against concurrent initialization attempts
    */
   async initializeDatabase(): Promise<void> {
+    // Return existing initialization promise if already initializing
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    // If already initialized, return immediately
+    if (this.db) {
+      return Promise.resolve();
+    }
+
+    // Create and store initialization promise to prevent concurrent initialization
+    this.initializationPromise = this.performInitialization();
+    
+    try {
+      await this.initializationPromise;
+    } finally {
+      this.initializationPromise = null;
+    }
+  }
+
+  /**
+   * Perform the actual database initialization
+   */
+  private async performInitialization(): Promise<void> {
     try {
       this.db = await SQLite.openDatabaseAsync('bowling_tracker.db');
 
@@ -94,6 +138,21 @@ export class DataService {
     if (this.db) {
       await this.db.closeAsync();
       this.db = null;
+    }
+    this.initializationPromise = null;
+  }
+
+  /**
+   * Reset the singleton instance (primarily for testing)
+   * @internal
+   */
+  public static resetInstance(): void {
+    if (DataService.instance) {
+      // Close database if open (async operation, but we don't wait)
+      DataService.instance.closeDatabase().catch((error) => {
+        console.error('Error closing database during reset:', error);
+      });
+      DataService.instance = null;
     }
   }
 

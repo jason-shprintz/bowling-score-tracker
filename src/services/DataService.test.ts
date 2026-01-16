@@ -42,10 +42,18 @@ describe('DataService', () => {
   let dataService: DataService;
 
   beforeEach(() => {
-    dataService = new DataService();
+    // Reset singleton instance before each test
+    DataService.resetInstance();
+    dataService = DataService.getInstance();
     jest.clearAllMocks();
     // Clear mock storage
     Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
+  });
+
+  afterEach(async () => {
+    // Clean up after each test
+    await dataService.closeDatabase();
+    DataService.resetInstance();
   });
 
   describe('Serialization/Deserialization', () => {
@@ -145,6 +153,24 @@ describe('DataService', () => {
     it('should close database without errors', async () => {
       await dataService.initializeDatabase();
       await expect(dataService.closeDatabase()).resolves.not.toThrow();
+    });
+
+    it('should return the same instance (singleton pattern)', () => {
+      const instance1 = DataService.getInstance();
+      const instance2 = DataService.getInstance();
+      expect(instance1).toBe(instance2);
+    });
+
+    it('should guard against concurrent initialization', async () => {
+      // Call initializeDatabase multiple times concurrently
+      const promises = [
+        dataService.initializeDatabase(),
+        dataService.initializeDatabase(),
+        dataService.initializeDatabase(),
+      ];
+      
+      // All should resolve without errors
+      await expect(Promise.all(promises)).resolves.toBeDefined();
     });
   });
 
