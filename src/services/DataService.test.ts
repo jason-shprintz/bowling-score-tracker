@@ -28,10 +28,16 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 // Mock SQLite database with in-memory storage
-const mockDatabase = {
-  games: [] as any[],
-  venues: [] as any[],
-  leagues: [] as any[],
+type DatabaseRow = Record<string, unknown>;
+
+const mockDatabase: {
+  games: DatabaseRow[];
+  venues: DatabaseRow[];
+  leagues: DatabaseRow[];
+} = {
+  games: [],
+  venues: [],
+  leagues: [],
 };
 
 jest.mock('expo-sqlite', () => ({
