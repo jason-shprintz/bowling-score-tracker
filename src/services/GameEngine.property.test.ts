@@ -822,7 +822,7 @@ describe('GameEngine - Property-Based Tests', () => {
     /**
      * Property: For any pin selection attempt, only physically possible pin combinations
      * should be accepted, and impossible combinations (like knocking down pin 7 without
-     * knocking down pins 4 or 10) should be rejected.
+     * knocking down pin 4) should be rejected.
      *
      * This property validates that:
      * 1. All physically possible pin combinations are accepted
