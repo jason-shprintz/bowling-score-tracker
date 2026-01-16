@@ -18,23 +18,65 @@ const STORAGE_KEYS = {
   CURRENT_SESSION: '@bowling_tracker:current_session',
 };
 
-// SQLite database instance
-let db: SQLite.SQLiteDatabase | null = null;
-
 /**
  * DataService handles local data persistence using AsyncStorage for simple data
  * and SQLite for complex queries and relational data.
+ * Implements singleton pattern to ensure only one database connection exists.
  */
 export class DataService {
+  private static instance: DataService | null = null;
+  private db: SQLite.SQLiteDatabase | null = null;
+  private initializationPromise: Promise<void> | null = null;
+
+  /**
+   * Private constructor to enforce singleton pattern
+   */
+  private constructor() {}
+
+  /**
+   * Get the singleton instance of DataService
+   */
+  public static getInstance(): DataService {
+    if (!DataService.instance) {
+      DataService.instance = new DataService();
+    }
+    return DataService.instance;
+  }
+
   /**
    * Initialize the SQLite database and create tables if they don't exist
+   * Guards against concurrent initialization attempts
    */
   async initializeDatabase(): Promise<void> {
+    // Return existing initialization promise if already initializing
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    // If already initialized, return immediately
+    if (this.db) {
+      return Promise.resolve();
+    }
+
+    // Create and store initialization promise to prevent concurrent initialization
+    this.initializationPromise = this.performInitialization();
+    
     try {
-      db = await SQLite.openDatabaseAsync('bowling_tracker.db');
+      await this.initializationPromise;
+    } finally {
+      this.initializationPromise = null;
+    }
+  }
+
+  /**
+   * Perform the actual database initialization
+   */
+  private async performInitialization(): Promise<void> {
+    try {
+      this.db = await SQLite.openDatabaseAsync('bowling_tracker.db');
 
       // Create games table
-      await db.execAsync(`
+      await this.db.execAsync(`
         CREATE TABLE IF NOT EXISTS games (
           id TEXT PRIMARY KEY,
           mode TEXT NOT NULL,
@@ -49,7 +91,7 @@ export class DataService {
       `);
 
       // Create venues table
-      await db.execAsync(`
+      await this.db.execAsync(`
         CREATE TABLE IF NOT EXISTS venues (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -63,7 +105,7 @@ export class DataService {
       `);
 
       // Create leagues table
-      await db.execAsync(`
+      await this.db.execAsync(`
         CREATE TABLE IF NOT EXISTS leagues (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -77,7 +119,7 @@ export class DataService {
       `);
 
       // Create indexes for common queries
-      await db.execAsync(`
+      await this.db.execAsync(`
         CREATE INDEX IF NOT EXISTS idx_games_start_time ON games(start_time);
         CREATE INDEX IF NOT EXISTS idx_games_mode ON games(mode);
         CREATE INDEX IF NOT EXISTS idx_games_league_id ON games(league_id);
@@ -93,9 +135,26 @@ export class DataService {
    * Close the database connection
    */
   async closeDatabase(): Promise<void> {
-    if (db) {
-      await db.closeAsync();
-      db = null;
+    if (this.db) {
+      await this.db.closeAsync();
+      this.db = null;
+    }
+    this.initializationPromise = null;
+  }
+
+  /**
+   * Reset the singleton instance (primarily for testing)
+   * Properly closes the database before resetting
+   * @internal
+   */
+  public static async resetInstance(): Promise<void> {
+    if (DataService.instance) {
+      try {
+        await DataService.instance.closeDatabase();
+      } catch (error) {
+        console.error('Error closing database during reset:', error);
+      }
+      DataService.instance = null;
     }
   }
 
@@ -240,7 +299,7 @@ export class DataService {
    * Save a completed game session to SQLite
    */
   async saveGameSession(session: GameSession): Promise<void> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
@@ -256,7 +315,7 @@ export class DataService {
       }
 
       // Insert or replace game session
-      await db!.runAsync(
+      await this.db!.runAsync(
         `INSERT OR REPLACE INTO games 
          (id, mode, league_id, venue_id, start_time, end_time, final_score, frames_data)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -281,12 +340,12 @@ export class DataService {
    * Get all game sessions from SQLite
    */
   async getGameSessions(): Promise<GameSession[]> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
     try {
-      const rows = await db!.getAllAsync<{
+      const rows = await this.db!.getAllAsync<{
         id: string;
         mode: string;
         league_id: string | null;
@@ -334,12 +393,12 @@ export class DataService {
    * Get game sessions filtered by league
    */
   async getGameSessionsByLeague(leagueId: string): Promise<GameSession[]> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
     try {
-      const rows = await db!.getAllAsync<{
+      const rows = await this.db!.getAllAsync<{
         id: string;
         mode: string;
         league_id: string | null;
@@ -383,12 +442,12 @@ export class DataService {
    * Get game sessions filtered by venue
    */
   async getGameSessionsByVenue(venueId: string): Promise<GameSession[]> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
     try {
-      const rows = await db!.getAllAsync<{
+      const rows = await this.db!.getAllAsync<{
         id: string;
         mode: string;
         league_id: string | null;
@@ -434,12 +493,12 @@ export class DataService {
    * Save a bowling alley venue to SQLite
    */
   async saveVenue(venue: BowlingAlley): Promise<void> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
     try {
-      await db!.runAsync(
+      await this.db!.runAsync(
         `INSERT OR REPLACE INTO venues 
          (id, name, address, latitude, longitude, accuracy, place_id)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -463,12 +522,12 @@ export class DataService {
    * Get a venue by ID from SQLite
    */
   async getVenueById(venueId: string): Promise<BowlingAlley | undefined> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
     try {
-      const row = await db!.getFirstAsync<{
+      const row = await this.db!.getFirstAsync<{
         id: string;
         name: string;
         address: string;
@@ -501,12 +560,12 @@ export class DataService {
    * Get all venues from SQLite
    */
   async getAllVenues(): Promise<BowlingAlley[]> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
     try {
-      const rows = await db!.getAllAsync<{
+      const rows = await this.db!.getAllAsync<{
         id: string;
         name: string;
         address: string;
@@ -539,7 +598,7 @@ export class DataService {
    * Save a league to SQLite
    */
   async saveLeague(league: League): Promise<void> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
@@ -547,7 +606,7 @@ export class DataService {
       // Save the league's alley first
       await this.saveVenue(league.alley);
 
-      await db!.runAsync(
+      await this.db!.runAsync(
         `INSERT OR REPLACE INTO leagues 
          (id, name, season, team_name, bowling_night, alley_id)
          VALUES (?, ?, ?, ?, ?, ?)`,
@@ -570,12 +629,12 @@ export class DataService {
    * Get a league by ID from SQLite
    */
   async getLeagueById(leagueId: string): Promise<League | undefined> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
     try {
-      const row = await db!.getFirstAsync<{
+      const row = await this.db!.getFirstAsync<{
         id: string;
         name: string;
         season: string;
@@ -607,12 +666,12 @@ export class DataService {
    * Get all leagues from SQLite
    */
   async getAllLeagues(): Promise<League[]> {
-    if (!db) {
+    if (!this.db) {
       await this.initializeDatabase();
     }
 
     try {
-      const rows = await db!.getAllAsync<{
+      const rows = await this.db!.getAllAsync<{
         id: string;
         name: string;
         season: string;
