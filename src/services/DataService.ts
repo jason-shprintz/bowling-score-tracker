@@ -297,32 +297,31 @@ export class DataService {
         frames_data: string;
       }>('SELECT * FROM games ORDER BY start_time DESC');
 
-      const sessions: GameSession[] = [];
+      const sessions: GameSession[] = await Promise.all(
+        rows.map(async (row) => {
+          // Fetch related league and venue in parallel if they exist
+          const leaguePromise: Promise<League | undefined> = row.league_id
+            ? this.getLeagueById(row.league_id)
+            : Promise.resolve<League | undefined>(undefined);
 
-      for (const row of rows) {
-        // Fetch related league if exists
-        let league: League | undefined;
-        if (row.league_id) {
-          league = await this.getLeagueById(row.league_id);
-        }
+          const venuePromise: Promise<BowlingAlley | undefined> = row.venue_id
+            ? this.getVenueById(row.venue_id)
+            : Promise.resolve<BowlingAlley | undefined>(undefined);
 
-        // Fetch related venue if exists
-        let venue: BowlingAlley | undefined;
-        if (row.venue_id) {
-          venue = await this.getVenueById(row.venue_id);
-        }
+          const [league, venue] = await Promise.all([leaguePromise, venuePromise]);
 
-        sessions.push({
-          id: row.id,
-          mode: row.mode as 'league' | 'open',
-          league,
-          venue,
-          startTime: new Date(row.start_time),
-          endTime: row.end_time ? new Date(row.end_time) : undefined,
-          finalScore: row.final_score || undefined,
-          frames: JSON.parse(row.frames_data),
-        });
-      }
+          return {
+            id: row.id,
+            mode: row.mode as 'league' | 'open',
+            league,
+            venue,
+            startTime: new Date(row.start_time),
+            endTime: row.end_time ? new Date(row.end_time) : undefined,
+            finalScore: row.final_score || undefined,
+            frames: JSON.parse(row.frames_data),
+          };
+        }),
+      );
 
       return sessions;
     } catch (error) {
