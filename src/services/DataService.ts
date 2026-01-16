@@ -401,27 +401,26 @@ export class DataService {
         venueId,
       ]);
 
-      const sessions: GameSession[] = [];
+      const sessions: GameSession[] = await Promise.all(
+        rows.map(async (row) => {
+          let league: League | undefined;
+          if (row.league_id) {
+            league = await this.getLeagueById(row.league_id);
+          }
+          const venue = await this.getVenueById(row.venue_id!);
 
-      for (const row of rows) {
-        let league: League | undefined;
-        if (row.league_id) {
-          league = await this.getLeagueById(row.league_id);
-        }
-        const venue = await this.getVenueById(row.venue_id!);
-
-        sessions.push({
-          id: row.id,
-          mode: row.mode as 'league' | 'open',
-          league,
-          venue,
-          startTime: new Date(row.start_time),
-          endTime: row.end_time ? new Date(row.end_time) : undefined,
-          finalScore: row.final_score || undefined,
-          frames: JSON.parse(row.frames_data),
-        });
-      }
-
+          return {
+            id: row.id,
+            mode: row.mode as 'league' | 'open',
+            league,
+            venue,
+            startTime: new Date(row.start_time),
+            endTime: row.end_time ? new Date(row.end_time) : undefined,
+            finalScore: row.final_score || undefined,
+            frames: JSON.parse(row.frames_data),
+          };
+        }),
+      );
       return sessions;
     } catch (error) {
       console.error('Failed to get game sessions by venue:', error);
