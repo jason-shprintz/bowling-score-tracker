@@ -41,9 +41,9 @@ jest.mock('expo-sqlite', () => ({
 describe('DataService', () => {
   let dataService: DataService;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset singleton instance before each test
-    DataService.resetInstance();
+    await DataService.resetInstance();
     dataService = DataService.getInstance();
     jest.clearAllMocks();
     // Clear mock storage
@@ -53,7 +53,7 @@ describe('DataService', () => {
   afterEach(async () => {
     // Clean up after each test
     await dataService.closeDatabase();
-    DataService.resetInstance();
+    await DataService.resetInstance();
   });
 
   describe('Serialization/Deserialization', () => {

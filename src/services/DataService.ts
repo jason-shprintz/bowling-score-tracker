@@ -144,14 +144,16 @@ export class DataService {
 
   /**
    * Reset the singleton instance (primarily for testing)
+   * Properly closes the database before resetting
    * @internal
    */
-  public static resetInstance(): void {
+  public static async resetInstance(): Promise<void> {
     if (DataService.instance) {
-      // Close database if open (async operation, but we don't wait)
-      DataService.instance.closeDatabase().catch((error) => {
+      try {
+        await DataService.instance.closeDatabase();
+      } catch (error) {
         console.error('Error closing database during reset:', error);
-      });
+      }
       DataService.instance = null;
     }
   }
