@@ -5,8 +5,6 @@ import { DataService } from './DataService';
 import {
   GameSession,
   User,
-  League,
-  BowlingAlley,
   UserPreferences,
 } from '@/types';
 
