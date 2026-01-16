@@ -352,27 +352,26 @@ export class DataService {
         leagueId,
       ]);
 
-      const sessions: GameSession[] = [];
+      const sessions: GameSession[] = await Promise.all(
+        rows.map(async (row) => {
+          const league = await this.getLeagueById(row.league_id!);
+          let venue: BowlingAlley | undefined;
+          if (row.venue_id) {
+            venue = await this.getVenueById(row.venue_id);
+          }
 
-      for (const row of rows) {
-        const league = await this.getLeagueById(row.league_id!);
-        let venue: BowlingAlley | undefined;
-        if (row.venue_id) {
-          venue = await this.getVenueById(row.venue_id);
-        }
-
-        sessions.push({
-          id: row.id,
-          mode: row.mode as 'league' | 'open',
-          league,
-          venue,
-          startTime: new Date(row.start_time),
-          endTime: row.end_time ? new Date(row.end_time) : undefined,
-          finalScore: row.final_score || undefined,
-          frames: JSON.parse(row.frames_data),
-        });
-      }
-
+          return {
+            id: row.id,
+            mode: row.mode as 'league' | 'open',
+            league,
+            venue,
+            startTime: new Date(row.start_time),
+            endTime: row.end_time ? new Date(row.end_time) : undefined,
+            finalScore: row.final_score || undefined,
+            frames: JSON.parse(row.frames_data),
+          };
+        }),
+      );
       return sessions;
     } catch (error) {
       console.error('Failed to get game sessions by league:', error);
