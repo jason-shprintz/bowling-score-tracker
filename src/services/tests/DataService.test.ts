@@ -1,14 +1,14 @@
 // DataService Unit Tests
 // Tests for local storage functionality (Task 4.1)
 
-import { DataService } from './DataService';
+import { DataService } from '../DataService';
 import {
   GameSession,
   User,
   UserPreferences,
   League,
   BowlingAlley,
-} from '@/types';
+} from '../../types';
 
 // Mock AsyncStorage
 const mockStorage: { [key: string]: string } = {};
@@ -47,28 +47,58 @@ jest.mock('expo-sqlite', () => ({
       runAsync: jest.fn((query: string, params: any[]) => {
         // Parse INSERT OR REPLACE queries for games
         if (query.includes('INSERT OR REPLACE INTO games')) {
-          const [id, mode, league_id, venue_id, start_time, end_time, final_score, frames_data] = params;
+          const [
+            id,
+            mode,
+            league_id,
+            venue_id,
+            start_time,
+            end_time,
+            final_score,
+            frames_data,
+          ] = params;
           // Remove existing entry with same id if exists
-          mockDatabase.games = mockDatabase.games.filter(g => g.id !== id);
+          mockDatabase.games = mockDatabase.games.filter((g) => g.id !== id);
           // Add new entry
           mockDatabase.games.push({
-            id, mode, league_id, venue_id, start_time, end_time, final_score, frames_data
+            id,
+            mode,
+            league_id,
+            venue_id,
+            start_time,
+            end_time,
+            final_score,
+            frames_data,
           });
         }
         // Parse INSERT OR REPLACE queries for venues
         else if (query.includes('INSERT OR REPLACE INTO venues')) {
-          const [id, name, address, latitude, longitude, accuracy, place_id] = params;
-          mockDatabase.venues = mockDatabase.venues.filter(v => v.id !== id);
+          const [id, name, address, latitude, longitude, accuracy, place_id] =
+            params;
+          mockDatabase.venues = mockDatabase.venues.filter((v) => v.id !== id);
           mockDatabase.venues.push({
-            id, name, address, latitude, longitude, accuracy, place_id
+            id,
+            name,
+            address,
+            latitude,
+            longitude,
+            accuracy,
+            place_id,
           });
         }
         // Parse INSERT OR REPLACE queries for leagues
         else if (query.includes('INSERT OR REPLACE INTO leagues')) {
           const [id, name, season, team_name, bowling_night, alley_id] = params;
-          mockDatabase.leagues = mockDatabase.leagues.filter(l => l.id !== id);
+          mockDatabase.leagues = mockDatabase.leagues.filter(
+            (l) => l.id !== id
+          );
           mockDatabase.leagues.push({
-            id, name, season, team_name, bowling_night, alley_id
+            id,
+            name,
+            season,
+            team_name,
+            bowling_night,
+            alley_id,
           });
         }
         return Promise.resolve();
@@ -77,9 +107,13 @@ jest.mock('expo-sqlite', () => ({
         // Return games based on query
         if (query.includes('SELECT * FROM games')) {
           if (query.includes('WHERE league_id = ?')) {
-            return Promise.resolve(mockDatabase.games.filter(g => g.league_id === params?.[0]));
+            return Promise.resolve(
+              mockDatabase.games.filter((g) => g.league_id === params?.[0])
+            );
           } else if (query.includes('WHERE venue_id = ?')) {
-            return Promise.resolve(mockDatabase.games.filter(g => g.venue_id === params?.[0]));
+            return Promise.resolve(
+              mockDatabase.games.filter((g) => g.venue_id === params?.[0])
+            );
           } else {
             return Promise.resolve([...mockDatabase.games]);
           }
@@ -97,11 +131,15 @@ jest.mock('expo-sqlite', () => ({
       getFirstAsync: jest.fn((query: string, params?: any[]) => {
         // Get venue by id
         if (query.includes('SELECT * FROM venues WHERE id = ?')) {
-          return Promise.resolve(mockDatabase.venues.find(v => v.id === params?.[0]) || null);
+          return Promise.resolve(
+            mockDatabase.venues.find((v) => v.id === params?.[0]) || null
+          );
         }
         // Get league by id
         else if (query.includes('SELECT * FROM leagues WHERE id = ?')) {
-          return Promise.resolve(mockDatabase.leagues.find(l => l.id === params?.[0]) || null);
+          return Promise.resolve(
+            mockDatabase.leagues.find((l) => l.id === params?.[0]) || null
+          );
         }
         return Promise.resolve(null);
       }),
@@ -244,7 +282,7 @@ describe('DataService', () => {
         dataService.initializeDatabase(),
         dataService.initializeDatabase(),
       ];
-      
+
       // All should resolve without errors
       await expect(Promise.all(promises)).resolves.toBeDefined();
     });
@@ -298,21 +336,63 @@ describe('DataService', () => {
           id: 'test-game-1',
           mode: 'open',
           frames: [
-            { 
-              frameNumber: 1, 
+            {
+              frameNumber: 1,
               rolls: [
-                { pins: ['knocked', 'knocked', 'knocked', 'knocked', 'knocked', 'knocked', 'knocked', 'standing', 'standing', 'standing'], pinsKnocked: 7 },
-                { pins: ['standing', 'standing', 'knocked', 'knocked', 'standing', 'standing', 'standing', 'standing', 'standing', 'standing'], pinsKnocked: 2 }
-              ], 
+                {
+                  pins: [
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'standing',
+                    'standing',
+                    'standing',
+                  ],
+                  pinsKnocked: 7,
+                },
+                {
+                  pins: [
+                    'standing',
+                    'standing',
+                    'knocked',
+                    'knocked',
+                    'standing',
+                    'standing',
+                    'standing',
+                    'standing',
+                    'standing',
+                    'standing',
+                  ],
+                  pinsKnocked: 2,
+                },
+              ],
               score: 9,
               isStrike: false,
               isSpare: false,
             },
-            { 
-              frameNumber: 2, 
+            {
+              frameNumber: 2,
               rolls: [
-                { pins: ['knocked', 'knocked', 'knocked', 'knocked', 'knocked', 'knocked', 'knocked', 'knocked', 'knocked', 'knocked'], pinsKnocked: 10 }
-              ], 
+                {
+                  pins: [
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                    'knocked',
+                  ],
+                  pinsKnocked: 10,
+                },
+              ],
               score: 19,
               isStrike: true,
               isSpare: false,
@@ -331,8 +411,12 @@ describe('DataService', () => {
         expect(sessions[0].mode).toBe(mockSession.mode);
         expect(sessions[0].finalScore).toBe(mockSession.finalScore);
         expect(sessions[0].frames).toEqual(mockSession.frames);
-        expect(sessions[0].startTime.getTime()).toBe(mockSession.startTime.getTime());
-        expect(sessions[0].endTime?.getTime()).toBe(mockSession.endTime?.getTime());
+        expect(sessions[0].startTime.getTime()).toBe(
+          mockSession.startTime.getTime()
+        );
+        expect(sessions[0].endTime?.getTime()).toBe(
+          mockSession.endTime?.getTime()
+        );
       });
 
       it('should save and retrieve multiple game sessions', async () => {
@@ -357,8 +441,8 @@ describe('DataService', () => {
 
         const sessions = await dataService.getGameSessions();
         expect(sessions).toHaveLength(2);
-        expect(sessions.map(s => s.id)).toContain('game-1');
-        expect(sessions.map(s => s.id)).toContain('game-2');
+        expect(sessions.map((s) => s.id)).toContain('game-1');
+        expect(sessions.map((s) => s.id)).toContain('game-2');
       });
 
       it('should update existing game session when saving with same id', async () => {
@@ -395,7 +479,7 @@ describe('DataService', () => {
           address: '123 Bowling St',
           location: {
             latitude: 40.7128,
-            longitude: -74.0060,
+            longitude: -74.006,
             accuracy: 10,
           },
           placeId: 'place-123',
@@ -417,7 +501,9 @@ describe('DataService', () => {
         expect(sessions[0].venue).toBeTruthy();
         expect(sessions[0].venue?.id).toBe(mockVenue.id);
         expect(sessions[0].venue?.name).toBe(mockVenue.name);
-        expect(sessions[0].venue?.location.latitude).toBe(mockVenue.location.latitude);
+        expect(sessions[0].venue?.location.latitude).toBe(
+          mockVenue.location.latitude
+        );
       });
 
       it('should filter game sessions by venue', async () => {
@@ -425,7 +511,7 @@ describe('DataService', () => {
           id: 'venue-1',
           name: 'Strike Zone',
           address: '123 Bowling St',
-          location: { latitude: 40.7128, longitude: -74.0060 },
+          location: { latitude: 40.7128, longitude: -74.006 },
         };
 
         const venue2: BowlingAlley = {
@@ -466,13 +552,17 @@ describe('DataService', () => {
         await dataService.saveGameSession(session2);
         await dataService.saveGameSession(session3);
 
-        const venue1Sessions = await dataService.getGameSessionsByVenue('venue-1');
+        const venue1Sessions =
+          await dataService.getGameSessionsByVenue('venue-1');
         expect(venue1Sessions).toHaveLength(2);
-        expect(venue1Sessions.map(s => s.id)).toContain('game-1');
-        expect(venue1Sessions.map(s => s.id)).toContain('game-3');
-        expect(venue1Sessions.every(s => s.venue?.id === 'venue-1')).toBe(true);
+        expect(venue1Sessions.map((s) => s.id)).toContain('game-1');
+        expect(venue1Sessions.map((s) => s.id)).toContain('game-3');
+        expect(venue1Sessions.every((s) => s.venue?.id === 'venue-1')).toBe(
+          true
+        );
 
-        const venue2Sessions = await dataService.getGameSessionsByVenue('venue-2');
+        const venue2Sessions =
+          await dataService.getGameSessionsByVenue('venue-2');
         expect(venue2Sessions).toHaveLength(1);
         expect(venue2Sessions[0].id).toBe('game-2');
       });
@@ -484,7 +574,7 @@ describe('DataService', () => {
           id: 'alley-1',
           name: 'Strike Zone',
           address: '123 Bowling St',
-          location: { latitude: 40.7128, longitude: -74.0060 },
+          location: { latitude: 40.7128, longitude: -74.006 },
         };
 
         const mockLeague: League = {
@@ -520,7 +610,7 @@ describe('DataService', () => {
           id: 'alley-1',
           name: 'Strike Zone',
           address: '123 Bowling St',
-          location: { latitude: 40.7128, longitude: -74.0060 },
+          location: { latitude: 40.7128, longitude: -74.006 },
         };
 
         const league1: League = {
@@ -570,13 +660,17 @@ describe('DataService', () => {
         await dataService.saveGameSession(session2);
         await dataService.saveGameSession(session3);
 
-        const league1Sessions = await dataService.getGameSessionsByLeague('league-1');
+        const league1Sessions =
+          await dataService.getGameSessionsByLeague('league-1');
         expect(league1Sessions).toHaveLength(2);
-        expect(league1Sessions.map(s => s.id)).toContain('game-1');
-        expect(league1Sessions.map(s => s.id)).toContain('game-3');
-        expect(league1Sessions.every(s => s.league?.id === 'league-1')).toBe(true);
+        expect(league1Sessions.map((s) => s.id)).toContain('game-1');
+        expect(league1Sessions.map((s) => s.id)).toContain('game-3');
+        expect(league1Sessions.every((s) => s.league?.id === 'league-1')).toBe(
+          true
+        );
 
-        const league2Sessions = await dataService.getGameSessionsByLeague('league-2');
+        const league2Sessions =
+          await dataService.getGameSessionsByLeague('league-2');
         expect(league2Sessions).toHaveLength(1);
         expect(league2Sessions[0].id).toBe('game-2');
       });

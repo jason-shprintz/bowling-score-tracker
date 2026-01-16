@@ -22,21 +22,21 @@ export const PIN_POSITIONS = [
 ] as const;
 
 export const STORAGE_KEYS = {
-  USER_PREFERENCES: "user_preferences",
-  GAME_SESSIONS: "game_sessions",
-  LEAGUES: "leagues",
-  VENUES: "venues",
-  CURRENT_GAME: "current_game",
+  USER_PREFERENCES: 'user_preferences',
+  GAME_SESSIONS: 'game_sessions',
+  LEAGUES: 'leagues',
+  VENUES: 'venues',
+  CURRENT_GAME: 'current_game',
 } as const;
 
 export const COLORS = {
-  primary: "#1E40AF",
-  secondary: "#64748B",
-  success: "#10B981",
-  error: "#EF4444",
-  warning: "#F59E0B",
-  background: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  textSecondary: "#6B7280",
+  primary: '#1E40AF',
+  secondary: '#64748B',
+  success: '#10B981',
+  error: '#EF4444',
+  warning: '#F59E0B',
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+  text: '#1F2937',
+  textSecondary: '#6B7280',
 } as const;

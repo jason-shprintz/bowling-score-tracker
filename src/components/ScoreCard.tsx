@@ -1,9 +1,9 @@
 // Score Card Component - Game progress display
 // This will be implemented in task 8.3
 
-import React from "react";
-import { View, Text } from "react-native";
-import { GameSession } from "@/types";
+import React from 'react';
+import { View, Text } from 'react-native';
+import { GameSession } from '../types';
 
 interface ScoreCardProps {
   gameSession: GameSession;

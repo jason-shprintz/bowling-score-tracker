@@ -9,7 +9,7 @@ import {
   League,
   BowlingAlley,
   UserPreferences,
-} from '@/types';
+} from '../types';
 
 // Storage keys for AsyncStorage
 const STORAGE_KEYS = {
@@ -60,7 +60,7 @@ export class DataService {
 
     // Create and store initialization promise to prevent concurrent initialization
     this.initializationPromise = this.performInitialization();
-    
+
     try {
       await this.initializationPromise;
     } finally {
@@ -367,7 +367,10 @@ export class DataService {
             ? this.getVenueById(row.venue_id)
             : Promise.resolve<BowlingAlley | undefined>(undefined);
 
-          const [league, venue] = await Promise.all([leaguePromise, venuePromise]);
+          const [league, venue] = await Promise.all([
+            leaguePromise,
+            venuePromise,
+          ]);
 
           return {
             id: row.id,
@@ -379,7 +382,7 @@ export class DataService {
             finalScore: row.final_score || undefined,
             frames: JSON.parse(row.frames_data),
           };
-        }),
+        })
       );
 
       return sessions;
@@ -429,7 +432,7 @@ export class DataService {
             finalScore: row.final_score || undefined,
             frames: JSON.parse(row.frames_data),
           };
-        }),
+        })
       );
       return sessions;
     } catch (error) {
@@ -478,7 +481,7 @@ export class DataService {
             finalScore: row.final_score || undefined,
             frames: JSON.parse(row.frames_data),
           };
-        }),
+        })
       );
       return sessions;
     } catch (error) {

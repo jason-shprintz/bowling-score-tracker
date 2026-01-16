@@ -2,7 +2,7 @@
 // This will be implemented in task 9.1
 
 import { useState } from 'react';
-import { GameSession, GameMode, League } from '@/types';
+import { GameSession, GameMode, League } from '../types';
 
 export const useGameEngine = () => {
   const [currentGame, _setCurrentGame] = useState<GameSession | null>(null);

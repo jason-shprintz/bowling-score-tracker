@@ -1,8 +1,8 @@
 // Unit tests for GameEngine core functionality
 // Tests basic game state management, frame tracking, and roll recording
 
-import { GameEngine } from './GameEngine';
-import { PinState } from '@/types';
+import { GameEngine } from '../GameEngine';
+import { PinState } from '../../types';
 
 describe('GameEngine - Core Game State Management', () => {
   let engine: GameEngine;

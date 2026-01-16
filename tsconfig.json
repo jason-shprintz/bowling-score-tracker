@@ -6,13 +6,14 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": "./src",
     "paths": {
-      "@/*": ["*"],
-      "@/components/*": ["components/*"],
-      "@/services/*": ["services/*"],
-      "@/types/*": ["types/*"],
-      "@/utils/*": ["utils/*"],
-      "@/screens/*": ["screens/*"],
-      "@/hooks/*": ["hooks/*"]
+      "@/*": ["./*"],
+      "@/components/*": ["./components/*"],
+      "@/services/*": ["./services/*"],
+      "../types": ["./types"],
+      "../types/*": ["./types/*"],
+      "@/utils/*": ["./utils/*"],
+      "@/screens/*": ["./screens/*"],
+      "@/hooks/*": ["./hooks/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"]

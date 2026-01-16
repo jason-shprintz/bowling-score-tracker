@@ -1,8 +1,8 @@
 // Pin Physics Validation Tests
 // Tests for physically possible pin combination checking
 
-import { PinPhysics } from './PinPhysics';
-import { PinState, Roll } from '@/types';
+import { PinPhysics } from '../PinPhysics';
+import { PinState, Roll } from '../../types';
 
 describe('PinPhysics', () => {
   let pinPhysics: PinPhysics;

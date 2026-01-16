@@ -4,10 +4,10 @@
 // Feature: bowling-score-tracker, Property 1: Bowling Score Calculation Accuracy
 // Validates: Requirements 2.3, 2.4, 2.5
 
-import { GameEngine } from './GameEngine';
-import { PinState, Roll } from '@/types';
+import { GameEngine } from '../GameEngine';
+import { PinState, Roll } from '../../types';
 import * as fc from 'fast-check';
-import { PinPhysics } from './PinPhysics';
+import { PinPhysics } from '../PinPhysics';
 
 /**
  * Generates physically valid pin combinations for first roll
