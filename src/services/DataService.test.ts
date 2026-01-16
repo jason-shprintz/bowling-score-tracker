@@ -94,14 +94,14 @@ jest.mock('expo-sqlite', () => ({
         }
         return Promise.resolve([]);
       }),
-      getFirstAsync: jest.fn((query: string, params: any[]) => {
+      getFirstAsync: jest.fn((query: string, params?: any[]) => {
         // Get venue by id
         if (query.includes('SELECT * FROM venues WHERE id = ?')) {
-          return Promise.resolve(mockDatabase.venues.find(v => v.id === params[0]) || null);
+          return Promise.resolve(mockDatabase.venues.find(v => v.id === params?.[0]) || null);
         }
         // Get league by id
         else if (query.includes('SELECT * FROM leagues WHERE id = ?')) {
-          return Promise.resolve(mockDatabase.leagues.find(l => l.id === params[0]) || null);
+          return Promise.resolve(mockDatabase.leagues.find(l => l.id === params?.[0]) || null);
         }
         return Promise.resolve(null);
       }),
