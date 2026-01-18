@@ -313,8 +313,14 @@ export class CloudSyncService {
       await setDoc(docRef, firestoreData, { merge: true });
     } catch (error) {
       console.error('Failed to sync game session:', error);
-      // Queue for later if offline
-      await this.queueOperation('update', 'games', session.id, session);
+      // Queue for later if offline. Convert Date fields to ISO strings so they
+      // survive JSON serialization by AsyncStorage without changing type shape.
+      const queuedSession = {
+        ...session,
+        startTime: session.startTime.toISOString(),
+        endTime: session.endTime ? session.endTime.toISOString() : null,
+      };
+      await this.queueOperation('update', 'games', session.id, queuedSession);
       throw error;
     }
   }
