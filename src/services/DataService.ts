@@ -791,30 +791,24 @@ export class DataService {
         this.getAllVenues(),
       ]);
 
-      // Fetch cloud user profile
-      const cloudUser = await cloudSync.fetchUserProfile();
-
-      // Sync game sessions with conflict resolution
-      const resolvedSessions =
-        await cloudSync.syncGameSessionsWithConflictResolution(localSessions);
+      // Sync all data with conflict resolution in parallel
+      const [cloudUser, resolvedSessions, resolvedLeagues, resolvedVenues] =
+        await Promise.all([
+          cloudSync.fetchUserProfile(),
+          cloudSync.syncGameSessionsWithConflictResolution(localSessions),
+          cloudSync.syncLeaguesWithConflictResolution(localLeagues),
+          cloudSync.syncVenuesWithConflictResolution(localVenues),
+        ]);
 
       // Save resolved sessions locally
       for (const session of resolvedSessions) {
         await this.saveGameSession(session);
       }
 
-      // Sync leagues with conflict resolution
-      const resolvedLeagues =
-        await cloudSync.syncLeaguesWithConflictResolution(localLeagues);
-
       // Save resolved leagues locally
       for (const league of resolvedLeagues) {
         await this.saveLeague(league);
       }
-
-      // Sync venues with conflict resolution
-      const resolvedVenues =
-        await cloudSync.syncVenuesWithConflictResolution(localVenues);
 
       // Save resolved venues locally
       for (const venue of resolvedVenues) {
