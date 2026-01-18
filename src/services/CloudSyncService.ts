@@ -458,9 +458,7 @@ export class CloudSyncService {
       }
 
       // Commit batch updates
-      if (batch) {
-        await batch.commit();
-      }
+      await batch.commit();
 
       return resolvedLeagues;
     } catch (error) {
@@ -514,9 +512,7 @@ export class CloudSyncService {
       }
 
       // Commit batch updates
-      if (batch) {
-        await batch.commit();
-      }
+      await batch.commit();
 
       return resolvedVenues;
     } catch (error) {
