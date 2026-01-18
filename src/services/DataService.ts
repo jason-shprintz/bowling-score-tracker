@@ -800,25 +800,19 @@ export class DataService {
           cloudSync.syncVenuesWithConflictResolution(localVenues),
         ]);
 
-      // Save resolved sessions locally
-      for (const session of resolvedSessions) {
-        await this.saveGameSession(session);
-      }
+      // Save all resolved data locally in parallel
+      const savePromises = [
+        ...resolvedSessions.map((session) => this.saveGameSession(session)),
+        ...resolvedLeagues.map((league) => this.saveLeague(league)),
+        ...resolvedVenues.map((venue) => this.saveVenue(venue)),
+      ];
 
-      // Save resolved leagues locally
-      for (const league of resolvedLeagues) {
-        await this.saveLeague(league);
-      }
-
-      // Save resolved venues locally
-      for (const venue of resolvedVenues) {
-        await this.saveVenue(venue);
-      }
-
-      // Update user profile if cloud version exists
+      // Add user profile save if it exists
       if (cloudUser) {
-        await this.saveUser(cloudUser);
+        savePromises.push(this.saveUser(cloudUser));
       }
+
+      await Promise.all(savePromises);
     } catch (error) {
       console.error('Failed to sync from cloud:', error);
       throw new Error('Cloud sync failed');
