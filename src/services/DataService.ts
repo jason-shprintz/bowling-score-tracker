@@ -826,15 +826,15 @@ export class DataService {
   }
 
   /**
-   * Perform bidirectional sync: sync to cloud and from cloud
+   * Perform bidirectional sync: sync from cloud and then to cloud
    */
   async performBidirectionalSync(): Promise<void> {
     try {
-      // First sync local changes to cloud
-      await this.syncToCloud();
-
-      // Then pull any remote changes
+      // First pull any remote changes and merge with local data
       await this.syncFromCloud();
+
+      // Then sync the resolved local state back to the cloud
+      await this.syncToCloud();
     } catch (error) {
       console.error('Bidirectional sync failed:', error);
       throw error;

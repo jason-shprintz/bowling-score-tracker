@@ -219,10 +219,13 @@ export class CloudSyncService {
 
     for (const operation of operations) {
       try {
-        const docRef = doc(
-          this.db!,
-          `users/${this.userId}/${operation.collection}/${operation.documentId}`
-        );
+        const docRef =
+          operation.collection === 'venues'
+            ? doc(this.db!, `${operation.collection}/${operation.documentId}`)
+            : doc(
+                this.db!,
+                `users/${this.userId}/${operation.collection}/${operation.documentId}`
+              );
 
         switch (operation.type) {
           case 'create':
@@ -268,11 +271,22 @@ export class CloudSyncService {
     remote: T
   ): T {
     // Use endTime if available, otherwise startTime
-    const localTime =
-      (local.endTime || local.startTime)?.getTime() || Date.now();
-    const remoteTime =
-      (remote.endTime || remote.startTime)?.getTime() || Date.now();
+    const localTime = (local.endTime || local.startTime)?.getTime();
+    const remoteTime = (remote.endTime || remote.startTime)?.getTime();
 
+    // If neither has a timestamp, fall back to a deterministic choice
+    if (localTime === undefined && remoteTime === undefined) {
+      // Prefer remote version when no timing information is available
+      return remote;
+    }
+
+    // If only one side has a timestamp, prefer the one with a timestamp
+    if (localTime === undefined) {
+      return remote;
+    }
+    if (remoteTime === undefined) {
+      return local;
+    }
     // Most recent timestamp wins
     return localTime >= remoteTime ? local : remote;
   }
@@ -299,8 +313,14 @@ export class CloudSyncService {
       await setDoc(docRef, firestoreData, { merge: true });
     } catch (error) {
       console.error('Failed to sync game session:', error);
-      // Queue for later if offline
-      await this.queueOperation('update', 'games', session.id, session);
+      // Queue for later if offline. Convert Date fields to ISO strings so they
+      // survive JSON serialization by AsyncStorage without changing type shape.
+      const queuedSession = {
+        ...session,
+        startTime: session.startTime.toISOString(),
+        endTime: session.endTime ? session.endTime.toISOString() : null,
+      };
+      await this.queueOperation('update', 'games', session.id, queuedSession);
       throw error;
     }
   }
