@@ -319,12 +319,13 @@ describe('DataService', () => {
   });
 
   describe('Error Handling', () => {
-    it('should throw error for unimplemented cloud sync methods', async () => {
+    it('should throw error when cloud sync is not initialized', async () => {
+      // Cloud sync methods should fail when CloudSyncService is not initialized
       await expect(dataService.syncToCloud()).rejects.toThrow(
-        'Cloud sync not implemented yet - Task 4.2'
+        'Cloud sync failed'
       );
       await expect(dataService.syncFromCloud()).rejects.toThrow(
-        'Cloud sync not implemented yet - Task 4.2'
+        'Cloud sync failed'
       );
     });
   });
