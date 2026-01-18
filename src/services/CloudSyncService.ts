@@ -271,11 +271,22 @@ export class CloudSyncService {
     remote: T
   ): T {
     // Use endTime if available, otherwise startTime
-    const localTime =
-      (local.endTime || local.startTime)?.getTime() || Date.now();
-    const remoteTime =
-      (remote.endTime || remote.startTime)?.getTime() || Date.now();
+    const localTime = (local.endTime || local.startTime)?.getTime();
+    const remoteTime = (remote.endTime || remote.startTime)?.getTime();
 
+    // If neither has a timestamp, fall back to a deterministic choice
+    if (localTime === undefined && remoteTime === undefined) {
+      // Prefer remote version when no timing information is available
+      return remote;
+    }
+
+    // If only one side has a timestamp, prefer the one with a timestamp
+    if (localTime === undefined) {
+      return remote;
+    }
+    if (remoteTime === undefined) {
+      return local;
+    }
     // Most recent timestamp wins
     return localTime >= remoteTime ? local : remote;
   }
