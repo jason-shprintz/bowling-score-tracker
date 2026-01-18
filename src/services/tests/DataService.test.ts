@@ -10,6 +10,30 @@ import {
   BowlingAlley,
 } from '../../types';
 
+// Mock Firestore (needed because CloudSyncService imports it)
+jest.mock('@react-native-firebase/firestore', () => {
+  const mockTimestampHelper = (millis: number) => ({
+    toMillis: () => millis,
+    toDate: () => new Date(millis),
+    seconds: Math.floor(millis / 1000),
+    nanoseconds: (millis % 1000) * 1000000,
+  });
+
+  const Timestamp = {
+    now: jest.fn(() => mockTimestampHelper(Date.now())),
+    fromDate: jest.fn((date: Date) => mockTimestampHelper(date.getTime())),
+  };
+
+  return {
+    __esModule: true,
+    default: jest.fn(() => ({
+      collection: jest.fn(),
+      batch: jest.fn(),
+    })),
+    Timestamp,
+  };
+});
+
 // Mock AsyncStorage
 const mockStorage: { [key: string]: string } = {};
 
