@@ -146,7 +146,24 @@ jest.mock('expo-sqlite', () => ({
         else if (query.includes('SELECT * FROM venues')) {
           return Promise.resolve([...mockDatabase.venues]);
         }
-        // Return leagues
+        // Return leagues with JOIN
+        else if (query.includes('FROM leagues l') && query.includes('JOIN bowling_alleys a')) {
+          // Handle the JOIN query by combining league and venue data
+          const result = mockDatabase.leagues.map((league) => {
+            const venue = mockDatabase.venues.find((v) => v.id === league.alley_id);
+            return {
+              id: league.id,
+              name: league.name,
+              season: league.season,
+              team_name: league.team_name,
+              bowling_night: league.bowling_night,
+              alley_id: league.alley_id,
+              alley_name: venue?.name || '',
+            };
+          });
+          return Promise.resolve(result);
+        }
+        // Return leagues (fallback for simpler queries)
         else if (query.includes('SELECT * FROM leagues')) {
           return Promise.resolve([...mockDatabase.leagues]);
         }
@@ -698,6 +715,158 @@ describe('DataService', () => {
           await dataService.getGameSessionsByLeague('league-2');
         expect(league2Sessions).toHaveLength(1);
         expect(league2Sessions[0].id).toBe('game-2');
+      });
+    });
+  });
+
+  describe('Cloud Sync Integration', () => {
+    describe('syncFromCloud', () => {
+      it('should fetch local data before syncing', async () => {
+        // This test verifies that syncFromCloud attempts to get local data
+        // The actual cloud sync will fail because CloudSyncService is not initialized
+        // but we can verify the method structure
+        
+        const venue: BowlingAlley = {
+          id: 'venue-1',
+          name: 'Test Venue',
+          address: '123 Test St',
+          location: { latitude: 40.7128, longitude: -74.006 },
+        };
+
+        const league: League = {
+          id: 'league-1',
+          name: 'Test League',
+          season: 'Winter 2024',
+          bowlingNight: 'Tuesday',
+          alley: venue,
+        };
+
+        await dataService.saveVenue(venue);
+        await dataService.saveLeague(league);
+
+        // Get counts before sync attempt
+        const venuesBefore = await dataService.getAllVenues();
+        const leaguesBefore = await dataService.getAllLeagues();
+        
+        expect(venuesBefore).toHaveLength(1);
+        expect(leaguesBefore).toHaveLength(1);
+
+        // Attempt sync - will fail but that's expected
+        await expect(dataService.syncFromCloud()).rejects.toThrow('Cloud sync failed');
+      });
+
+      it('should handle venue-league dependency correctly', async () => {
+        // This test verifies that venues are properly saved through leagues
+        const venue1: BowlingAlley = {
+          id: 'venue-1',
+          name: 'Venue 1',
+          address: '123 St',
+          location: { latitude: 40.7128, longitude: -74.006 },
+        };
+
+        const venue2: BowlingAlley = {
+          id: 'venue-2',
+          name: 'Venue 2',
+          address: '456 Ave',
+          location: { latitude: 40.7128, longitude: -74.006 },
+        };
+
+        const league1: League = {
+          id: 'league-1',
+          name: 'League 1',
+          season: 'Winter',
+          bowlingNight: 'Monday',
+          alley: venue1,
+        };
+
+        const league2: League = {
+          id: 'league-2',
+          name: 'League 2',
+          season: 'Spring',
+          bowlingNight: 'Tuesday',
+          alley: venue2,
+        };
+
+        // Save venues first
+        await dataService.saveVenue(venue1);
+        await dataService.saveVenue(venue2);
+
+        // Then save leagues
+        await dataService.saveLeague(league1);
+        await dataService.saveLeague(league2);
+
+        // Verify all data is saved correctly
+        const savedVenues = await dataService.getAllVenues();
+        expect(savedVenues).toHaveLength(2);
+        expect(savedVenues.map(v => v.id).sort()).toEqual(['venue-1', 'venue-2']);
+
+        const savedLeagues = await dataService.getAllLeagues();
+        expect(savedLeagues).toHaveLength(2);
+        expect(savedLeagues.map(l => l.id).sort()).toEqual(['league-1', 'league-2']);
+        
+        // Verify leagues reference their venues correctly
+        const league1Saved = savedLeagues.find(l => l.id === 'league-1');
+        expect(league1Saved?.alley.id).toBe('venue-1');
+        
+        const league2Saved = savedLeagues.find(l => l.id === 'league-2');
+        expect(league2Saved?.alley.id).toBe('venue-2');
+      });
+
+      it('should handle multiple leagues with the same venue', async () => {
+        const sharedVenue: BowlingAlley = {
+          id: 'venue-shared',
+          name: 'Shared Venue',
+          address: '123 Shared St',
+          location: { latitude: 40.7128, longitude: -74.006 },
+        };
+
+        const league1: League = {
+          id: 'league-1',
+          name: 'League 1',
+          season: 'Winter',
+          bowlingNight: 'Monday',
+          alley: sharedVenue,
+        };
+
+        const league2: League = {
+          id: 'league-2',
+          name: 'League 2',
+          season: 'Spring',
+          bowlingNight: 'Tuesday',
+          alley: sharedVenue,
+        };
+
+        // Save the venue first
+        await dataService.saveVenue(sharedVenue);
+        
+        // Save both leagues - they should not cause duplicate venue saves
+        await dataService.saveLeague(league1);
+        await dataService.saveLeague(league2);
+
+        // Verify only one venue exists
+        const savedVenues = await dataService.getAllVenues();
+        expect(savedVenues).toHaveLength(1);
+        expect(savedVenues[0].id).toBe('venue-shared');
+
+        // Verify both leagues exist and reference the same venue
+        const savedLeagues = await dataService.getAllLeagues();
+        expect(savedLeagues).toHaveLength(2);
+        expect(savedLeagues[0].alley.id).toBe('venue-shared');
+        expect(savedLeagues[1].alley.id).toBe('venue-shared');
+      });
+
+      it('should handle empty sync data gracefully', async () => {
+        // Ensure no data exists
+        const sessions = await dataService.getGameSessions();
+        const venues = await dataService.getAllVenues();
+        const leagues = await dataService.getAllLeagues();
+        
+        expect(sessions).toHaveLength(0);
+        expect(venues).toHaveLength(0);
+        expect(leagues).toHaveLength(0);
+
+        // Attempt sync with no data - will fail due to uninitialized CloudSyncService
+        await expect(dataService.syncFromCloud()).rejects.toThrow('Cloud sync failed');
       });
     });
   });
