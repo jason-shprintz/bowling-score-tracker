@@ -784,17 +784,15 @@ export class DataService {
     const cloudSync = CloudSyncService.getInstance();
 
     try {
-      // Fetch data from cloud
-      const [cloudSessions, cloudUser, cloudLeagues, cloudVenues] =
-        await Promise.all([
-          cloudSync.fetchGameSessions(),
-          cloudSync.fetchUserProfile(),
-          cloudSync.fetchLeagues(),
-          cloudSync.fetchVenues(),
-        ]);
-
       // Get local data for conflict resolution
-      const localSessions = await this.getGameSessions();
+      const [localSessions, localLeagues, localVenues] = await Promise.all([
+        this.getGameSessions(),
+        this.getAllLeagues(),
+        this.getAllVenues(),
+      ]);
+
+      // Fetch cloud user profile
+      const cloudUser = await cloudSync.fetchUserProfile();
 
       // Sync game sessions with conflict resolution
       const resolvedSessions =
@@ -805,19 +803,27 @@ export class DataService {
         await this.saveGameSession(session);
       }
 
-      // Update user profile if cloud version exists
-      if (cloudUser) {
-        await this.saveUser(cloudUser);
-      }
+      // Sync leagues with conflict resolution
+      const resolvedLeagues =
+        await cloudSync.syncLeaguesWithConflictResolution(localLeagues);
 
-      // Sync leagues
-      for (const league of cloudLeagues) {
+      // Save resolved leagues locally
+      for (const league of resolvedLeagues) {
         await this.saveLeague(league);
       }
 
-      // Sync venues
-      for (const venue of cloudVenues) {
+      // Sync venues with conflict resolution
+      const resolvedVenues =
+        await cloudSync.syncVenuesWithConflictResolution(localVenues);
+
+      // Save resolved venues locally
+      for (const venue of resolvedVenues) {
         await this.saveVenue(venue);
+      }
+
+      // Update user profile if cloud version exists
+      if (cloudUser) {
+        await this.saveUser(cloudUser);
       }
     } catch (error) {
       console.error('Failed to sync from cloud:', error);
