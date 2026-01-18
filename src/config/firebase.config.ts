@@ -8,11 +8,11 @@
 
 /**
  * React Native Firebase Configuration
- * 
+ *
  * For React Native Firebase, configuration is done in native code:
  * 1. Android: Place google-services.json in android/app/
  * 2. iOS: Add GoogleService-Info.plist to ios/ folder
- * 
+ *
  * See: https://rnfirebase.io/
  */
 

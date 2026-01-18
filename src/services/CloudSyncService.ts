@@ -1,7 +1,9 @@
 // Cloud Sync Service - Firebase Firestore integration with offline queue
 // Task 4.2: Cloud sync service with conflict resolution
 
-import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
+import firestore, {
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GameSession, User, League, BowlingAlley } from '../types';
 
@@ -191,8 +193,13 @@ export class CloudSyncService {
       try {
         const docRef =
           operation.collection === 'venues'
-            ? this.db!.collection(operation.collection).doc(operation.documentId)
-            : this.db!.collection('users').doc(this.userId!).collection(operation.collection).doc(operation.documentId);
+            ? this.db!.collection(operation.collection).doc(
+                operation.documentId
+              )
+            : this.db!.collection('users')
+                .doc(this.userId!)
+                .collection(operation.collection)
+                .doc(operation.documentId);
 
         switch (operation.type) {
           case 'create':
@@ -267,13 +274,18 @@ export class CloudSyncService {
     this.ensureInitialized();
 
     try {
-      const docRef = this.db!.collection('users').doc(this.userId!).collection('games').doc(session.id);
+      const docRef = this.db!.collection('users')
+        .doc(this.userId!)
+        .collection('games')
+        .doc(session.id);
 
       // Prepare data for Firestore (convert dates to timestamps)
       const firestoreData = {
         ...session,
         startTime: firestore.Timestamp.fromDate(session.startTime),
-        endTime: session.endTime ? firestore.Timestamp.fromDate(session.endTime) : null,
+        endTime: session.endTime
+          ? firestore.Timestamp.fromDate(session.endTime)
+          : null,
         syncedAt: firestore.Timestamp.now(),
       };
 
@@ -299,7 +311,9 @@ export class CloudSyncService {
     this.ensureInitialized();
 
     try {
-      const gamesRef = this.db!.collection('users').doc(this.userId!).collection('games');
+      const gamesRef = this.db!.collection('users')
+        .doc(this.userId!)
+        .collection('games');
       const snapshot = await gamesRef.get();
 
       const sessions: GameSession[] = [];
@@ -349,7 +363,10 @@ export class CloudSyncService {
 
           // Update Firestore if local version won
           if (resolved === local) {
-            const docRef = this.db!.collection('users').doc(this.userId!).collection('games').doc(id);
+            const docRef = this.db!.collection('users')
+              .doc(this.userId!)
+              .collection('games')
+              .doc(id);
             batch.set(
               docRef,
               {
@@ -366,13 +383,18 @@ export class CloudSyncService {
         } else if (local) {
           // Only exists locally: upload to Firestore
           resolvedSessions.push(local);
-          const docRef = this.db!.collection('users').doc(this.userId!).collection('games').doc(id);
+          const docRef = this.db!.collection('users')
+            .doc(this.userId!)
+            .collection('games')
+            .doc(id);
           batch.set(
             docRef,
             {
               ...local,
               startTime: firestore.Timestamp.fromDate(local.startTime),
-              endTime: local.endTime ? firestore.Timestamp.fromDate(local.endTime) : null,
+              endTime: local.endTime
+                ? firestore.Timestamp.fromDate(local.endTime)
+                : null,
               syncedAt: firestore.Timestamp.now(),
             },
             { merge: true }
@@ -435,10 +457,17 @@ export class CloudSyncService {
               ? remoteTimestamp.toMillis()
               : null;
 
-          if (localMillis !== null && remoteMillis !== null && localMillis > remoteMillis) {
+          if (
+            localMillis !== null &&
+            remoteMillis !== null &&
+            localMillis > remoteMillis
+          ) {
             // Local version is newer: keep and upload it
             resolvedLeagues.push(local);
-            const docRef = this.db!.collection('users').doc(this.userId!).collection('leagues').doc(id);
+            const docRef = this.db!.collection('users')
+              .doc(this.userId!)
+              .collection('leagues')
+              .doc(id);
             batch.set(
               docRef,
               { ...local, syncedAt: firestore.Timestamp.now() },
@@ -451,7 +480,10 @@ export class CloudSyncService {
         } else if (local) {
           // Only exists locally: upload to Firestore
           resolvedLeagues.push(local);
-          const docRef = this.db!.collection('users').doc(this.userId!).collection('leagues').doc(id);
+          const docRef = this.db!.collection('users')
+            .doc(this.userId!)
+            .collection('leagues')
+            .doc(id);
           batch.set(
             docRef,
             { ...local, syncedAt: firestore.Timestamp.now() },
@@ -468,10 +500,7 @@ export class CloudSyncService {
 
       return resolvedLeagues;
     } catch (error) {
-      console.error(
-        'Failed to sync leagues with conflict resolution:',
-        error
-      );
+      console.error('Failed to sync leagues with conflict resolution:', error);
       throw error;
     }
   }
@@ -501,8 +530,12 @@ export class CloudSyncService {
 
         if (local && remote) {
           // Conflict: resolve using last-write-wins based on `syncedAt`
-          const localSyncedAt = (local as any).syncedAt as FirebaseFirestoreTypes.Timestamp | undefined;
-          const remoteSyncedAt = (remote as any).syncedAt as FirebaseFirestoreTypes.Timestamp | undefined;
+          const localSyncedAt = (local as any).syncedAt as
+            | FirebaseFirestoreTypes.Timestamp
+            | undefined;
+          const remoteSyncedAt = (remote as any).syncedAt as
+            | FirebaseFirestoreTypes.Timestamp
+            | undefined;
 
           let chosen = remote;
           let shouldUploadChosen = false;
@@ -556,10 +589,7 @@ export class CloudSyncService {
 
       return resolvedVenues;
     } catch (error) {
-      console.error(
-        'Failed to sync venues with conflict resolution:',
-        error
-      );
+      console.error('Failed to sync venues with conflict resolution:', error);
       throw error;
     }
   }
@@ -573,7 +603,10 @@ export class CloudSyncService {
     this.ensureInitialized();
 
     try {
-      const docRef = this.db!.collection('users').doc(this.userId!).collection('profile').doc('data');
+      const docRef = this.db!.collection('users')
+        .doc(this.userId!)
+        .collection('profile')
+        .doc('data');
       await docRef.set(
         { ...user, syncedAt: firestore.Timestamp.now() },
         { merge: true }
@@ -592,7 +625,10 @@ export class CloudSyncService {
     this.ensureInitialized();
 
     try {
-      const docRef = this.db!.collection('users').doc(this.userId!).collection('profile').doc('data');
+      const docRef = this.db!.collection('users')
+        .doc(this.userId!)
+        .collection('profile')
+        .doc('data');
       const snapshot = await docRef.get();
 
       if (!snapshot.exists()) return null;
@@ -614,7 +650,10 @@ export class CloudSyncService {
     this.ensureInitialized();
 
     try {
-      const docRef = this.db!.collection('users').doc(this.userId!).collection('leagues').doc(league.id);
+      const docRef = this.db!.collection('users')
+        .doc(this.userId!)
+        .collection('leagues')
+        .doc(league.id);
       await docRef.set(
         { ...league, syncedAt: firestore.Timestamp.now() },
         { merge: true }
@@ -633,7 +672,9 @@ export class CloudSyncService {
     this.ensureInitialized();
 
     try {
-      const leaguesRef = this.db!.collection('users').doc(this.userId!).collection('leagues');
+      const leaguesRef = this.db!.collection('users')
+        .doc(this.userId!)
+        .collection('leagues');
       const snapshot = await leaguesRef.get();
 
       const leagues: League[] = [];
