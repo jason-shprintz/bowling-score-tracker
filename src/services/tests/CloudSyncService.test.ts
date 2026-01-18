@@ -55,21 +55,7 @@ let mockBatch = {
   commit: jest.fn().mockResolvedValue(undefined),
 };
 
-// Mock Timestamp
-const MockTimestamp = {
-  now: jest.fn(() => createMockTimestamp(Date.now())),
-  fromDate: jest.fn((date: Date) => createMockTimestamp(date.getTime())),
-};
-
 jest.mock('@react-native-firebase/firestore', () => {
-  // Define helper inside the mock factory
-  const mockTimestampHelper = (millis: number) => ({
-    toMillis: () => millis,
-    toDate: () => new Date(millis),
-    seconds: Math.floor(millis / 1000),
-    nanoseconds: (millis % 1000) * 1000000,
-  });
-
   const mockCollection = (collectionPath: string, parentPath: string = '') => {
     const fullPath = parentPath ? `${parentPath}/${collectionPath}` : collectionPath;
     const pathParts = fullPath.split('/');
@@ -122,8 +108,8 @@ jest.mock('@react-native-firebase/firestore', () => {
   };
 
   const Timestamp = {
-    now: jest.fn(() => mockTimestampHelper(Date.now())),
-    fromDate: jest.fn((date: Date) => mockTimestampHelper(date.getTime())),
+    now: jest.fn(() => createMockTimestamp(Date.now())),
+    fromDate: jest.fn((date: Date) => createMockTimestamp(date.getTime())),
   };
 
   const mockFirestoreInstance = () => ({
