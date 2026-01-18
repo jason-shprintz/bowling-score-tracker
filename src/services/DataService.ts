@@ -784,41 +784,38 @@ export class DataService {
     const cloudSync = CloudSyncService.getInstance();
 
     try {
-      // Fetch data from cloud
-      const [cloudSessions, cloudUser, cloudLeagues, cloudVenues] =
+      // Get local data for conflict resolution
+      const [localSessions, localLeagues, localVenues] = await Promise.all([
+        this.getGameSessions(),
+        this.getAllLeagues(),
+        this.getAllVenues(),
+      ]);
+
+      // Sync all data with conflict resolution in parallel
+      const [cloudUser, resolvedSessions, resolvedLeagues, resolvedVenues] =
         await Promise.all([
-          cloudSync.fetchGameSessions(),
           cloudSync.fetchUserProfile(),
-          cloudSync.fetchLeagues(),
-          cloudSync.fetchVenues(),
+          cloudSync.syncGameSessionsWithConflictResolution(localSessions),
+          cloudSync.syncLeaguesWithConflictResolution(localLeagues),
+          cloudSync.syncVenuesWithConflictResolution(localVenues),
         ]);
 
-      // Get local data for conflict resolution
-      const localSessions = await this.getGameSessions();
+      // Save venues first to avoid race conditions
+      // (saveLeague internally calls saveVenue for each league's alley)
+      await Promise.all(resolvedVenues.map((venue) => this.saveVenue(venue)));
 
-      // Sync game sessions with conflict resolution
-      const resolvedSessions =
-        await cloudSync.syncGameSessionsWithConflictResolution(localSessions);
+      // Save sessions, leagues, and user profile in parallel
+      const savePromises = [
+        ...resolvedSessions.map((session) => this.saveGameSession(session)),
+        ...resolvedLeagues.map((league) => this.saveLeague(league)),
+      ];
 
-      // Save resolved sessions locally
-      for (const session of resolvedSessions) {
-        await this.saveGameSession(session);
-      }
-
-      // Update user profile if cloud version exists
+      // Add user profile save if it exists
       if (cloudUser) {
-        await this.saveUser(cloudUser);
+        savePromises.push(this.saveUser(cloudUser));
       }
 
-      // Sync leagues
-      for (const league of cloudLeagues) {
-        await this.saveLeague(league);
-      }
-
-      // Sync venues
-      for (const venue of cloudVenues) {
-        await this.saveVenue(venue);
-      }
+      await Promise.all(savePromises);
     } catch (error) {
       console.error('Failed to sync from cloud:', error);
       throw new Error('Cloud sync failed');
