@@ -68,8 +68,10 @@ export class CloudSyncService {
    * Initialize Firebase with configuration (React Native Firebase)
    * Note: Firebase should be initialized in the app's native code
    * This method just sets up the service with the user ID
+   * @param _config Unused - kept for API compatibility
+   * @param userId The user ID to associate with this sync service
    */
-  async initialize(config: any, userId: string): Promise<void> {
+  async initialize(_config: any, userId: string): Promise<void> {
     try {
       // In React Native Firebase, the app is initialized via native code
       // We just get the firestore instance
