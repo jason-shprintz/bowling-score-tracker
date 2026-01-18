@@ -440,8 +440,39 @@ export class CloudSyncService {
         const remote = remoteMap.get(id);
 
         if (local && remote) {
-          // Conflict: prefer remote version (no timestamps available)
-          resolvedLeagues.push(remote);
+          // Conflict: resolve using last-write-wins based on timestamps if available
+          const localAny: any = local;
+          const remoteAny: any = remote;
+          const localTimestamp: any =
+            localAny.updatedAt || localAny.syncedAt || null;
+          const remoteTimestamp: any =
+            remoteAny.updatedAt || remoteAny.syncedAt || null;
+
+          const localMillis =
+            localTimestamp && typeof localTimestamp.toMillis === 'function'
+              ? localTimestamp.toMillis()
+              : null;
+          const remoteMillis =
+            remoteTimestamp && typeof remoteTimestamp.toMillis === 'function'
+              ? remoteTimestamp.toMillis()
+              : null;
+
+          if (localMillis !== null && remoteMillis !== null && localMillis > remoteMillis) {
+            // Local version is newer: keep and upload it
+            resolvedLeagues.push(local);
+            const docRef = doc(
+              this.db!,
+              `users/${this.userId}/leagues/${id}`
+            );
+            batch.set(
+              docRef,
+              { ...local, syncedAt: Timestamp.now() },
+              { merge: true }
+            );
+          } else {
+            // Remote version is newer or timestamps unavailable: prefer remote
+            resolvedLeagues.push(remote);
+          }
         } else if (local) {
           // Only exists locally: upload to Firestore
           resolvedLeagues.push(local);
