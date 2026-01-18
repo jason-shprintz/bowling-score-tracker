@@ -525,8 +525,42 @@ export class CloudSyncService {
         const remote = remoteMap.get(id);
 
         if (local && remote) {
-          // Conflict: prefer remote version (no timestamps available)
-          resolvedVenues.push(remote);
+          // Conflict: resolve using last-write-wins based on `syncedAt`
+          const localSyncedAt = (local as any).syncedAt as Timestamp | undefined;
+          const remoteSyncedAt = (remote as any).syncedAt as Timestamp | undefined;
+
+          let chosen = remote;
+          let shouldUploadChosen = false;
+
+          if (localSyncedAt && remoteSyncedAt) {
+            // Both have timestamps: pick the most recently synced version
+            if (localSyncedAt.toMillis() > remoteSyncedAt.toMillis()) {
+              chosen = local;
+              shouldUploadChosen = true;
+            }
+          } else if (!localSyncedAt && remoteSyncedAt) {
+            // Local has no syncedAt but remote does: treat local as newer/unsynced
+            chosen = local;
+            shouldUploadChosen = true;
+          } else if (localSyncedAt && !remoteSyncedAt) {
+            // Remote has no syncedAt but local does: keep remote to avoid overwriting
+            chosen = remote;
+          } else {
+            // Neither has syncedAt: default to remote to preserve server as source of truth
+            chosen = remote;
+          }
+
+          resolvedVenues.push(chosen);
+
+          // If the local version won, upload it so Firestore matches the resolved state
+          if (shouldUploadChosen && chosen === local) {
+            const docRef = doc(this.db!, `venues/${id}`);
+            batch.set(
+              docRef,
+              { ...local, syncedAt: Timestamp.now() },
+              { merge: true }
+            );
+          }
         } else if (local) {
           // Only exists locally: upload to Firestore
           resolvedVenues.push(local);
