@@ -595,7 +595,7 @@ export class CloudSyncService {
       const docRef = this.db!.collection('users').doc(this.userId!).collection('profile').doc('data');
       const snapshot = await docRef.get();
 
-      if (!snapshot.exists) return null;
+      if (!snapshot.exists()) return null;
 
       const data = snapshot.data();
       return data as User;

@@ -48,12 +48,15 @@ const resetMockFirestore = () => {
   mockFirestoreData.venues = {};
 };
 
-// Create mock batch that will be shared
-let mockBatch = {
+// Factory function to create a fresh mock batch
+const createMockBatch = () => ({
   set: jest.fn(),
   delete: jest.fn(),
   commit: jest.fn().mockResolvedValue(undefined),
-};
+});
+
+// Create mock batch that will be shared
+let mockBatch = createMockBatch();
 
 jest.mock('@react-native-firebase/firestore', () => {
   const mockCollection = (collectionPath: string, parentPath: string = '') => {
@@ -76,7 +79,7 @@ jest.mock('@react-native-firebase/firestore', () => {
             }
 
             return Promise.resolve({
-              exists: !!docData,
+              exists: () => !!docData,
               data: () => docData,
             });
           }),
@@ -139,12 +142,8 @@ describe('CloudSyncService', () => {
     Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
     resetMockFirestore();
 
-    // Reset mock batch
-    mockBatch = {
-      set: jest.fn(),
-      delete: jest.fn(),
-      commit: jest.fn().mockResolvedValue(undefined),
-    };
+    // Reset mock batch using factory function
+    mockBatch = createMockBatch();
 
     // Initialize with test user ID
     await cloudSyncService.initialize({}, testUserId);
