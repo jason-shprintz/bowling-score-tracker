@@ -6,3 +6,4 @@ export * from './LocationService';
 export * from './WatchConnector';
 export * from './DataService';
 export * from './PinPhysics';
+export * from './CloudSyncService';

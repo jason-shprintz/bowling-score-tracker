@@ -724,18 +724,120 @@ export class DataService {
   // ==================== Cloud Sync Methods (Task 4.2) ====================
 
   /**
-   * Sync data to cloud storage
-   * Implementation will be added in task 4.2
+   * Sync local data to cloud storage
+   * Uploads all local game sessions, user profile, leagues, and venues
    */
   async syncToCloud(): Promise<void> {
-    throw new Error('Cloud sync not implemented yet - Task 4.2');
+    const CloudSyncService = (await import('./CloudSyncService'))
+      .CloudSyncService;
+    const cloudSync = CloudSyncService.getInstance();
+
+    try {
+      // Get all local data
+      const [sessions, user, leagues, venues] = await Promise.all([
+        this.getGameSessions(),
+        this.getUser(),
+        this.getAllLeagues(),
+        this.getAllVenues(),
+      ]);
+
+      // Sync each type of data
+      const syncPromises: Promise<void>[] = [];
+
+      // Sync game sessions
+      for (const session of sessions) {
+        syncPromises.push(cloudSync.syncGameSession(session));
+      }
+
+      // Sync user profile
+      if (user) {
+        syncPromises.push(cloudSync.syncUserProfile(user));
+      }
+
+      // Sync leagues
+      for (const league of leagues) {
+        syncPromises.push(cloudSync.syncLeague(league));
+      }
+
+      // Sync venues
+      for (const venue of venues) {
+        syncPromises.push(cloudSync.syncVenue(venue));
+      }
+
+      await Promise.all(syncPromises);
+
+      // Perform full sync to process any queued operations
+      await cloudSync.performFullSync();
+    } catch (error) {
+      console.error('Failed to sync to cloud:', error);
+      throw new Error('Cloud sync failed');
+    }
   }
 
   /**
-   * Sync data from cloud storage
-   * Implementation will be added in task 4.2
+   * Sync data from cloud storage to local
+   * Downloads all cloud data and merges with local data using conflict resolution
    */
   async syncFromCloud(): Promise<void> {
-    throw new Error('Cloud sync not implemented yet - Task 4.2');
+    const CloudSyncService = (await import('./CloudSyncService'))
+      .CloudSyncService;
+    const cloudSync = CloudSyncService.getInstance();
+
+    try {
+      // Fetch data from cloud
+      const [cloudSessions, cloudUser, cloudLeagues, cloudVenues] =
+        await Promise.all([
+          cloudSync.fetchGameSessions(),
+          cloudSync.fetchUserProfile(),
+          cloudSync.fetchLeagues(),
+          cloudSync.fetchVenues(),
+        ]);
+
+      // Get local data for conflict resolution
+      const localSessions = await this.getGameSessions();
+
+      // Sync game sessions with conflict resolution
+      const resolvedSessions =
+        await cloudSync.syncGameSessionsWithConflictResolution(localSessions);
+
+      // Save resolved sessions locally
+      for (const session of resolvedSessions) {
+        await this.saveGameSession(session);
+      }
+
+      // Update user profile if cloud version exists
+      if (cloudUser) {
+        await this.saveUser(cloudUser);
+      }
+
+      // Sync leagues
+      for (const league of cloudLeagues) {
+        await this.saveLeague(league);
+      }
+
+      // Sync venues
+      for (const venue of cloudVenues) {
+        await this.saveVenue(venue);
+      }
+    } catch (error) {
+      console.error('Failed to sync from cloud:', error);
+      throw new Error('Cloud sync failed');
+    }
+  }
+
+  /**
+   * Perform bidirectional sync: sync from cloud and then to cloud
+   */
+  async performBidirectionalSync(): Promise<void> {
+    try {
+      // First pull any remote changes and merge with local data
+      await this.syncFromCloud();
+
+      // Then sync the resolved local state back to the cloud
+      await this.syncToCloud();
+    } catch (error) {
+      console.error('Bidirectional sync failed:', error);
+      throw error;
+    }
   }
 }
