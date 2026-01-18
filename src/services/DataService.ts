@@ -800,11 +800,14 @@ export class DataService {
           cloudSync.syncVenuesWithConflictResolution(localVenues),
         ]);
 
-      // Save all resolved data locally in parallel
+      // Save venues first to avoid race conditions
+      // (saveLeague internally calls saveVenue for each league's alley)
+      await Promise.all(resolvedVenues.map((venue) => this.saveVenue(venue)));
+
+      // Save sessions, leagues, and user profile in parallel
       const savePromises = [
         ...resolvedSessions.map((session) => this.saveGameSession(session)),
         ...resolvedLeagues.map((league) => this.saveLeague(league)),
-        ...resolvedVenues.map((venue) => this.saveVenue(venue)),
       ];
 
       // Add user profile save if it exists
