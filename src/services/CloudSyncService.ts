@@ -219,10 +219,13 @@ export class CloudSyncService {
 
     for (const operation of operations) {
       try {
-        const docRef = doc(
-          this.db!,
-          `users/${this.userId}/${operation.collection}/${operation.documentId}`
-        );
+        const docRef =
+          operation.collection === 'venues'
+            ? doc(this.db!, `${operation.collection}/${operation.documentId}`)
+            : doc(
+                this.db!,
+                `users/${this.userId}/${operation.collection}/${operation.documentId}`
+              );
 
         switch (operation.type) {
           case 'create':
