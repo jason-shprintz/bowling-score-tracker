@@ -15,10 +15,7 @@ import {
   setDoc,
   getDoc,
   getDocs,
-  query,
-  where,
   Timestamp,
-  enableIndexedDbPersistence,
   writeBatch,
 } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -100,16 +97,8 @@ export class CloudSyncService {
       this.db = getFirestore(this.app);
       this.userId = userId;
 
-      // Enable offline persistence for web/mobile
-      try {
-        await enableIndexedDbPersistence(this.db);
-      } catch (err: any) {
-        if (err.code === 'failed-precondition') {
-          console.warn('Multiple tabs open, persistence enabled in first tab');
-        } else if (err.code === 'unimplemented') {
-          console.warn('Browser does not support persistence');
-        }
-      }
+      // Note: Offline persistence is enabled by default in React Native Firebase
+      // No need to explicitly enable it like in the web SDK
     } catch (error) {
       console.error('Failed to initialize Firebase:', error);
       throw new Error('Firebase initialization failed');
@@ -421,6 +410,118 @@ export class CloudSyncService {
     } catch (error) {
       console.error(
         'Failed to sync game sessions with conflict resolution:',
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Sync leagues with conflict resolution
+   */
+  async syncLeaguesWithConflictResolution(
+    localLeagues: League[]
+  ): Promise<League[]> {
+    this.ensureInitialized();
+
+    try {
+      const remoteLeagues = await this.fetchLeagues();
+      const remoteMap = new Map(remoteLeagues.map((l) => [l.id, l]));
+      const localMap = new Map(localLeagues.map((l) => [l.id, l]));
+
+      const resolvedLeagues: League[] = [];
+      const batch = writeBatch(this.db!);
+
+      // Process all unique league IDs
+      const allIds = new Set([...remoteMap.keys(), ...localMap.keys()]);
+
+      for (const id of allIds) {
+        const local = localMap.get(id);
+        const remote = remoteMap.get(id);
+
+        if (local && remote) {
+          // Conflict: prefer remote version (no timestamps available)
+          resolvedLeagues.push(remote);
+        } else if (local) {
+          // Only exists locally: upload to Firestore
+          resolvedLeagues.push(local);
+          const docRef = doc(this.db!, `users/${this.userId}/leagues/${id}`);
+          batch.set(
+            docRef,
+            { ...local, syncedAt: Timestamp.now() },
+            { merge: true }
+          );
+        } else if (remote) {
+          // Only exists remotely: add to resolved list
+          resolvedLeagues.push(remote);
+        }
+      }
+
+      // Commit batch updates
+      if (batch) {
+        await batch.commit();
+      }
+
+      return resolvedLeagues;
+    } catch (error) {
+      console.error(
+        'Failed to sync leagues with conflict resolution:',
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Sync venues with conflict resolution
+   */
+  async syncVenuesWithConflictResolution(
+    localVenues: BowlingAlley[]
+  ): Promise<BowlingAlley[]> {
+    this.ensureInitialized();
+
+    try {
+      const remoteVenues = await this.fetchVenues();
+      const remoteMap = new Map(remoteVenues.map((v) => [v.id, v]));
+      const localMap = new Map(localVenues.map((v) => [v.id, v]));
+
+      const resolvedVenues: BowlingAlley[] = [];
+      const batch = writeBatch(this.db!);
+
+      // Process all unique venue IDs
+      const allIds = new Set([...remoteMap.keys(), ...localMap.keys()]);
+
+      for (const id of allIds) {
+        const local = localMap.get(id);
+        const remote = remoteMap.get(id);
+
+        if (local && remote) {
+          // Conflict: prefer remote version (no timestamps available)
+          resolvedVenues.push(remote);
+        } else if (local) {
+          // Only exists locally: upload to Firestore
+          resolvedVenues.push(local);
+          const docRef = doc(this.db!, `venues/${id}`);
+          batch.set(
+            docRef,
+            { ...local, syncedAt: Timestamp.now() },
+            { merge: true }
+          );
+        } else if (remote) {
+          // Only exists remotely: add to resolved list
+          resolvedVenues.push(remote);
+        }
+      }
+
+      // Commit batch updates
+      if (batch) {
+        await batch.commit();
+      }
+
+      return resolvedVenues;
+    } catch (error) {
+      console.error(
+        'Failed to sync venues with conflict resolution:',
         error
       );
       throw error;
